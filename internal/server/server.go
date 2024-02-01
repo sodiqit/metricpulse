@@ -7,6 +7,7 @@ import (
 
 	"github.com/sodiqit/metricpulse.git/internal/server/controllers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
+	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
 func RegisterHandlers(mux *http.ServeMux, controllers []*controllers.Controller) {
@@ -18,17 +19,18 @@ func RegisterHandlers(mux *http.ServeMux, controllers []*controllers.Controller)
 }
 
 func RegisterDeps() []*controllers.Controller {
-	appService := services.NewAppService()
-	appController := controllers.NewAppController(appService)
+	storage := storage.NewMemStorage()
+	metricService := services.NewMetricService(storage)
+	metricController := controllers.NewMetricController(&metricService)
 
-	return []*controllers.Controller{&appController.Controller}
+	return []*controllers.Controller{metricController}
 }
 
 func NewServeMux() *http.ServeMux {
 	controllers := RegisterDeps()
 
 	mux := http.NewServeMux()
-	
+
 	RegisterHandlers(mux, controllers)
 
 	return mux
