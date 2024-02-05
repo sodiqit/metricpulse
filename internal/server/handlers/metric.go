@@ -8,19 +8,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 )
 
 func isValidMetricType(metricType string) bool {
-	if metricType != "gauge" && metricType != "counter" {
-		return false;
+	if metricType != constants.MetricTypeGauge && metricType != constants.MetricTypeCounter {
+		return false
 	}
 
-	return true;
+	return true
 }
 
 func parseMetricValue(metricType string, value string) (services.MetricValue, error) {
-	if metricType == "gauge" {
+	if metricType == constants.MetricTypeGauge {
 		val, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return services.MetricValue{}, errors.New("invalid value metric: provide float64")
@@ -29,7 +30,7 @@ func parseMetricValue(metricType string, value string) (services.MetricValue, er
 		return services.MetricValue{Gauge: val}, nil
 	}
 
-	if metricType == "counter" {
+	if metricType == constants.MetricTypeCounter {
 		val, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return services.MetricValue{}, errors.New("invalid value metric: provide int64")
@@ -77,7 +78,6 @@ func GetMetricHandler(metricService services.IMetricService) http.HandlerFunc {
 			return
 		}
 
-
 		val, err := metricService.GetMetric(metricType, metricName)
 
 		if err != nil {
@@ -86,9 +86,9 @@ func GetMetricHandler(metricService services.IMetricService) http.HandlerFunc {
 		}
 
 		switch metricType {
-		case "gauge":
+		case constants.MetricTypeGauge:
 			w.Write([]byte(strconv.FormatFloat(val.Gauge, 'f', -1, 64)))
-		case "counter":
+		case constants.MetricTypeCounter:
 			w.Write([]byte(strconv.Itoa(int(val.Counter))))
 		}
 	}
