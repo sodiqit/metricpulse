@@ -7,9 +7,9 @@ import (
 )
 
 func main() {
-	mux := server.NewServeMux()
+	router := server.NewRouter()
 
-	err := server.RunServer(8080, mux)
+	err := server.RunServer(8080, router)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
