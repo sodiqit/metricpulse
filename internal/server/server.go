@@ -5,39 +5,28 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sodiqit/metricpulse.git/internal/server/controllers"
+	"github.com/go-chi/chi/v5"
+	"github.com/sodiqit/metricpulse.git/internal/server/handlers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
-func RegisterHandlers(mux *http.ServeMux, controllers []*controllers.Controller) {
-	for _, controller := range controllers {
-		for path, handler := range controller.Routes {
-			mux.HandleFunc(path, handler)
-		}
-	}
-}
-
-func RegisterDeps() []*controllers.Controller {
+func RegisterDeps(r chi.Router) {
 	storage := storage.NewMemStorage()
 	metricService := services.NewMetricService(storage)
-	metricController := controllers.NewMetricController(&metricService)
-
-	return []*controllers.Controller{metricController}
+	handlers.RegisterMetricRouter(r, &metricService)
 }
 
-func NewServeMux() *http.ServeMux {
-	controllers := RegisterDeps()
+func NewRouter() chi.Router {
+	r := chi.NewRouter()
 
-	mux := http.NewServeMux()
+	RegisterDeps(r)
 
-	RegisterHandlers(mux, controllers)
-
-	return mux
+	return r
 }
 
-func RunServer(port int, mux *http.ServeMux) error {
+func RunServer(port int, r chi.Router) error {
 	addr := fmt.Sprintf(":%d", port)
 	log.Printf("Server is starting on %s", addr)
-	return http.ListenAndServe(addr, mux)
+	return http.ListenAndServe(addr, r)
 }

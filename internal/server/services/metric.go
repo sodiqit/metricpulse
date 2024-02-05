@@ -1,28 +1,51 @@
 package services
 
 import (
+	"errors"
+
+	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
 type IMetricService interface {
-	SaveMetric(metricType string, metricKind string, metricValue interface{})
+	SaveMetric(metricType string, metricName string, metricValue MetricValue)
+	GetMetric(metricType string, metricName string) (MetricValue, error)
+	GetAllMetrics() *storage.MemStorage
 }
 
 type MetricService struct {
 	Storage *storage.MemStorage
 }
 
-func (s *MetricService) SaveMetric(metricType string, metricKind string, metricValue interface{}) {
+type MetricValue struct {
+	Gauge   float64
+	Counter int64
+}
+
+func (s *MetricService) SaveMetric(metricType string, metricName string, metricValue MetricValue) {
 	switch metricType {
-	case "gauge":
-		if value, ok := metricValue.(float64); ok {
-			s.Storage.SaveGaugeMetric(metricKind, value)
-		}
-	case "counter":
-		if value, ok := metricValue.(int64); ok {
-			s.Storage.SaveCounterMetric(metricKind, value)
-		}
+	case constants.MetricTypeGauge:
+		s.Storage.SaveGaugeMetric(metricName, metricValue.Gauge)
+	case constants.MetricTypeCounter:
+		s.Storage.SaveCounterMetric(metricName, metricValue.Counter)
 	}
+}
+
+func (s *MetricService) GetMetric(metricType string, metricName string) (MetricValue, error) {
+	switch metricType {
+	case constants.MetricTypeGauge:
+		val, err := s.Storage.GetGaugeMetric(metricName)
+		return MetricValue{Gauge: val}, err
+	case constants.MetricTypeCounter:
+		val, err := s.Storage.GetCounterMetric(metricName)
+		return MetricValue{Counter: val}, err
+	}
+
+	return MetricValue{}, errors.New("not correct metric type")
+}
+
+func (s *MetricService) GetAllMetrics() *storage.MemStorage {
+	return s.Storage
 }
 
 func NewMetricService(storage *storage.MemStorage) MetricService {
