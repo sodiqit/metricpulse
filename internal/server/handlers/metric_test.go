@@ -97,6 +97,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			}
 
 			resp, _ := testRequest(t, ts, tc.method, tc.url)
+			defer resp.Body.Close()
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
 			metricServiceMock.AssertExpectations(t)
 		})
@@ -171,6 +172,7 @@ func TestGetMetricHandler(t *testing.T) {
 			tc.setupMock()
 
 			resp, body := testRequest(t, ts, tc.method, tc.url)
+			defer resp.Body.Close()
 
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
 			metricServiceMock.AssertExpectations(t)
@@ -224,6 +226,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 			tc.setupMock()
 
 			resp, _ := testRequest(t, ts, tc.method, tc.url)
+			defer resp.Body.Close()
 
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
 			metricServiceMock.AssertExpectations(t)
