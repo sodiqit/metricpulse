@@ -109,9 +109,8 @@ func GetAllMetricsHandler(metricService services.IMetricService) http.HandlerFun
 		htmlBuilder.WriteString("</ul>")
 
 		htmlBuilder.WriteString("<h1>Counter Metrics</h1><ul>")
-		for name, values := range metrics.Counter {
-			valuesStr := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(values)), ", "), "[]")
-			htmlBuilder.WriteString(fmt.Sprintf("<li>%s: [%s]</li>", name, valuesStr))
+		for name, value := range metrics.Counter {
+			htmlBuilder.WriteString(fmt.Sprintf("<li>%s: %v</li>", name, value))
 		}
 		htmlBuilder.WriteString("</ul></body></html>")
 
