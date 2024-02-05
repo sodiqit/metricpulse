@@ -1,6 +1,6 @@
 package constants
 
 const (
-	MetricTypeGauge = "gauge"
+	MetricTypeGauge   = "gauge"
 	MetricTypeCounter = "counter"
 )

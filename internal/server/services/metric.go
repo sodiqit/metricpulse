@@ -10,6 +10,7 @@ import (
 type IMetricService interface {
 	SaveMetric(metricType string, metricName string, metricValue MetricValue)
 	GetMetric(metricType string, metricName string) (MetricValue, error)
+	GetAllMetrics() *storage.MemStorage
 }
 
 type MetricService struct {
@@ -41,6 +42,10 @@ func (s *MetricService) GetMetric(metricType string, metricName string) (MetricV
 	}
 
 	return MetricValue{}, errors.New("not correct metric type")
+}
+
+func (s *MetricService) GetAllMetrics() *storage.MemStorage {
+	return s.Storage
 }
 
 func NewMetricService(storage *storage.MemStorage) MetricService {

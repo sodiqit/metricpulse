@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -94,9 +95,36 @@ func GetMetricHandler(metricService services.IMetricService) http.HandlerFunc {
 	}
 }
 
+func GetAllMetricsHandler(metricService services.IMetricService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metrics := metricService.GetAllMetrics()
+
+		var htmlBuilder strings.Builder
+		htmlBuilder.WriteString("<html><head><title>Metrics</title></head><body>")
+		htmlBuilder.WriteString("<h1>Gauge Metrics</h1><ul>")
+
+		for name, value := range metrics.Gauge {
+			htmlBuilder.WriteString(fmt.Sprintf("<li>%s: %f</li>", name, value))
+		}
+		htmlBuilder.WriteString("</ul>")
+
+		htmlBuilder.WriteString("<h1>Counter Metrics</h1><ul>")
+		for name, values := range metrics.Counter {
+			valuesStr := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(values)), ", "), "[]")
+			htmlBuilder.WriteString(fmt.Sprintf("<li>%s: [%s]</li>", name, valuesStr))
+		}
+		htmlBuilder.WriteString("</ul></body></html>")
+
+		w.Header().Add("Content-Type", "text/html")
+
+		w.Write([]byte(htmlBuilder.String()))
+	}
+}
+
 func RegisterMetricRouter(r chi.Router, metricService services.IMetricService) chi.Router {
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", UpdateMetricHandler(metricService))
 	r.Get("/value/{metricType}/{metricName}", GetMetricHandler(metricService))
+	r.Get("/", GetAllMetricsHandler(metricService))
 
 	return r
 }

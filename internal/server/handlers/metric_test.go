@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sodiqit/metricpulse.git/internal/server/handlers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
+	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,11 @@ func (m *MetricServiceMock) SaveMetric(metricType, metricKind string, val servic
 func (m *MetricServiceMock) GetMetric(metricType, metricKind string) (services.MetricValue, error) {
 	args := m.Called(metricType, metricKind)
 	return args.Get(0).(services.MetricValue), args.Error(1)
+}
+
+func (m *MetricServiceMock) GetAllMetrics() *storage.MemStorage {
+	args := m.Called()
+	return args.Get(0).(*storage.MemStorage)
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
@@ -171,6 +177,59 @@ func TestGetMetricHandler(t *testing.T) {
 
 			if tc.expectedStatus == http.StatusOK {
 				assert.Equal(t, tc.expectedResult, body)
+			}
+		})
+	}
+}
+
+func TestGetAllMetricsHandler(t *testing.T) {
+	r := chi.NewRouter()
+
+	metricServiceMock := new(MetricServiceMock)
+
+	handlers.RegisterMetricRouter(r, metricServiceMock)
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	tests := []struct {
+		name                string
+		method              string
+		url                 string
+		setupMock           func()
+		expectedContentType string
+		expectedStatus      int
+	}{
+		{
+			name:   "Valid result",
+			method: http.MethodGet,
+			url:    "/",
+			setupMock: func() {
+				metricServiceMock.On("GetAllMetrics").Once().Return(&storage.MemStorage{})
+			},
+			expectedContentType: "text/html",
+			expectedStatus:      http.StatusOK,
+		},
+		{
+			name:           "Invalid method",
+			method:         http.MethodPost,
+			url:            "/",
+			setupMock:      func() {},
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setupMock()
+
+			resp, _ := testRequest(t, ts, tc.method, tc.url)
+
+			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
+			metricServiceMock.AssertExpectations(t)
+
+			if tc.expectedStatus == http.StatusOK {
+				assert.Equal(t, tc.expectedContentType, resp.Header.Get("Content-Type"))
 			}
 		})
 	}
