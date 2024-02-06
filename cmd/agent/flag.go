@@ -1,19 +1,35 @@
 package main
 
-import "flag"
+import (
+	"flag"
+	"log"
+	"time"
 
-type Flags struct {
-	serverAddr     string
-	reportInterval int
-	pollInterval   int
+	"github.com/caarlos0/env/v10"
+)
+
+type Config struct {
+	Address        string        `env:"ADDRESS"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 }
 
-var agentFlags Flags
+var cfg Config
 
-func parseFlags() {
-	flag.StringVar(&agentFlags.serverAddr, "a", "localhost:8080", "address and port server")
-	flag.IntVar(&agentFlags.reportInterval, "r", 10, "report interval in seconds")
-	flag.IntVar(&agentFlags.pollInterval, "p", 2, "poll runtime interval in seconds")
+func parseConfig() {
+	flag.StringVar(&cfg.Address, "a", "localhost:8080", "address and port server")
+	reportInterval := flag.Int("r", 10, "report interval in seconds")
+	pollInterval := flag.Int("p", 2, "poll runtime interval in seconds")
 
 	flag.Parse()
+
+	reportIntervalDuration := time.Duration(*reportInterval) * time.Second
+	pollIntervalDuration := time.Duration(*pollInterval) * time.Second
+
+	cfg.ReportInterval = reportIntervalDuration
+	cfg.PollInterval = pollIntervalDuration
+
+	if err := env.Parse(&cfg); err != nil {
+		log.Fatal(err)
+	}
 }
