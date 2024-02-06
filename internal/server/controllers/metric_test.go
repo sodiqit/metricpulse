@@ -1,4 +1,4 @@
-package handlers_test
+package controllers_test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sodiqit/metricpulse.git/internal/server/handlers"
+	"github.com/sodiqit/metricpulse.git/internal/server/controllers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +53,9 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	metricServiceMock := new(MetricServiceMock)
 
-	handlers.RegisterMetricRouter(r, metricServiceMock)
+	c := controllers.NewMetricController(metricServiceMock)
+
+	r.Mount("/", c.Route())
 
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -109,7 +111,9 @@ func TestGetMetricHandler(t *testing.T) {
 
 	metricServiceMock := new(MetricServiceMock)
 
-	handlers.RegisterMetricRouter(r, metricServiceMock)
+	c := controllers.NewMetricController(metricServiceMock)
+
+	r.Mount("/", c.Route())
 
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -189,7 +193,9 @@ func TestGetAllMetricsHandler(t *testing.T) {
 
 	metricServiceMock := new(MetricServiceMock)
 
-	handlers.RegisterMetricRouter(r, metricServiceMock)
+	c := controllers.NewMetricController(metricServiceMock)
+
+	r.Mount("/", c.Route())
 
 	ts := httptest.NewServer(r)
 	defer ts.Close()

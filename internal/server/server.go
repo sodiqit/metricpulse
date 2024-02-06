@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sodiqit/metricpulse.git/internal/server/handlers"
+	"github.com/sodiqit/metricpulse.git/internal/server/controllers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
@@ -13,7 +13,9 @@ import (
 func RegisterDeps(r chi.Router) {
 	storage := storage.NewMemStorage()
 	metricService := services.NewMetricService(storage)
-	handlers.RegisterMetricRouter(r, &metricService)
+	metricController := controllers.NewMetricController(&metricService)
+
+	r.Mount("/", metricController.Route())
 }
 
 func NewRouter() chi.Router {
