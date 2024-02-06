@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	parseFlags()
+	parseConfig()
 
 	router := server.NewRouter()
 
-	err := server.RunServer(runAddr, router)
+	err := server.RunServer(cfg.Address, router)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}

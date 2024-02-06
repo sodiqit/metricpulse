@@ -7,10 +7,7 @@ import (
 )
 
 func main() {
-	parseFlags()
+	parseConfig()
 
-	pollIntervalDuration := time.Duration(agentFlags.pollInterval) * time.Second
-	reportIntervalDuration := time.Duration(agentFlags.reportInterval) * time.Second
-
-	agent.RunCollector(agentFlags.serverAddr, pollIntervalDuration, reportIntervalDuration)
+	agent.RunCollector(cfg.Address, time.Duration(cfg.PollInterval)*time.Second, time.Duration(cfg.ReportInterval)*time.Second)
 }

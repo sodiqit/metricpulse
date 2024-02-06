@@ -3,6 +3,7 @@ module github.com/sodiqit/metricpulse.git
 go 1.20
 
 require (
+	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi/v5 v5.0.11 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
