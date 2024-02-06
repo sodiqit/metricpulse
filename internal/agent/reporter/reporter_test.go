@@ -71,7 +71,7 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := new(MockHTTPClient)
-			r := reporter.NewMetricReporter(mockClient)
+			r := reporter.NewMetricReporter("localhost:8080", mockClient)
 
 			if tt.expectedCalls > 0 {
 				mockClient.On("Post", mock.Anything, "text/plain", mock.Anything).Return(tt.mockResponse, tt.mockError).Times(tt.expectedCalls)

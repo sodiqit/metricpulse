@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -25,8 +24,7 @@ func NewRouter() chi.Router {
 	return r
 }
 
-func RunServer(port int, r chi.Router) error {
-	addr := fmt.Sprintf(":%d", port)
+func RunServer(addr string, r chi.Router) error {
 	log.Printf("Server is starting on %s", addr)
 	return http.ListenAndServe(addr, r)
 }
