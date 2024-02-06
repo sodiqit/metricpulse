@@ -27,7 +27,7 @@ func (c *MetricController) Route() *chi.Mux {
 	return r
 }
 
-func (mc *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
@@ -45,12 +45,12 @@ func (mc *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	mc.metricService.SaveMetric(metricType, metricName, val)
+	c.metricService.SaveMetric(metricType, metricName, val)
 
 	w.Write([]byte{})
 }
 
-func (mc *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Request) {
+func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 
@@ -61,7 +61,7 @@ func (mc *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	val, err := mc.metricService.GetMetric(metricType, metricName)
+	val, err := c.metricService.GetMetric(metricType, metricName)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metricName), http.StatusNotFound)
@@ -76,8 +76,8 @@ func (mc *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (mc *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := mc.metricService.GetAllMetrics()
+func (c *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	metrics := c.metricService.GetAllMetrics()
 
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString("<html><head><title>Metrics</title></head><body>")
