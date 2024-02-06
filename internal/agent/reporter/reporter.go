@@ -13,7 +13,8 @@ type IMetricReporter interface {
 }
 
 type MetricReporter struct {
-	Client HTTPClient
+	Client     HTTPClient
+	serverAddr string
 }
 
 type HTTPClient interface {
@@ -33,7 +34,7 @@ func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 			continue
 		}
 
-		url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", metricType, metricName, metricValue)
+		url := fmt.Sprintf("http://%s/update/%s/%s/%v", r.serverAddr, metricType, metricName, metricValue)
 		resp, err := r.Client.Post(url, "text/plain", nil)
 
 		if err != nil {
@@ -47,8 +48,9 @@ func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 	}
 }
 
-func NewMetricReporter(client HTTPClient) *MetricReporter {
+func NewMetricReporter(serverAddr string, client HTTPClient) *MetricReporter {
 	return &MetricReporter{
-		Client: client,
+		Client:     client,
+		serverAddr: serverAddr,
 	}
 }

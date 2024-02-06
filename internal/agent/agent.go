@@ -54,9 +54,9 @@ func CollectMetrics(mc *MetricCounters) map[string]interface{} {
 	}
 }
 
-func RunCollector(pollInterval time.Duration, reportInterval time.Duration) {
+func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval time.Duration) {
 	mc := MetricCounters{}
-	reporter := reporter.NewMetricReporter(&http.Client{})
+	reporter := reporter.NewMetricReporter(serverAddr, &http.Client{})
 
 	go func() {
 		for {
