@@ -1,32 +1,36 @@
 package server
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/controllers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
-func RegisterDeps(r chi.Router) {
+func registerDeps(r chi.Router, logger logger.ILogger) {
 	storage := storage.NewMemStorage()
 	metricService := services.NewMetricService(storage)
-	metricController := controllers.NewMetricController(&metricService)
+	metricController := controllers.NewMetricController(&metricService, logger)
 
 	r.Mount("/", metricController.Route())
 }
 
-func NewRouter() chi.Router {
+func Run(addr, logLevel string) error {
+	logger, err := logger.Initialize(logLevel)
+
+	if err != nil {
+		return err
+	}
+
+	defer logger.Sync()
+
 	r := chi.NewRouter()
 
-	RegisterDeps(r)
+	registerDeps(r, logger)
 
-	return r
-}
-
-func RunServer(addr string, r chi.Router) error {
-	log.Printf("Server is starting on %s", addr)
+	logger.Infow("start server", "address", addr)
 	return http.ListenAndServe(addr, r)
 }

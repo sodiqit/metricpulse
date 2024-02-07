@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
+	"github.com/sodiqit/metricpulse.git/internal/logger"
 )
 
 type MetricCounters struct {
@@ -54,9 +55,15 @@ func CollectMetrics(mc *MetricCounters) map[string]interface{} {
 	}
 }
 
-func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval time.Duration) {
+func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval time.Duration, logLevel string) error {
 	mc := MetricCounters{}
-	reporter := reporter.NewMetricReporter(serverAddr, &http.Client{})
+	logger, err := logger.Initialize(logLevel)
+
+	if err != nil {
+		return err
+	}
+
+	reporter := reporter.NewMetricReporter(serverAddr, &http.Client{}, logger)
 
 	go func() {
 		for {
