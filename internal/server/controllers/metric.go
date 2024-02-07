@@ -10,15 +10,20 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
+	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/sodiqit/metricpulse.git/internal/server/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 )
 
 type MetricController struct {
 	metricService services.IMetricService
+	logger        logger.ILogger
 }
 
 func (c *MetricController) Route() *chi.Mux {
 	r := chi.NewRouter()
+
+	r.Use(middlewares.WithLogger(c.logger))
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", c.handleUpdateMetric)
 	r.Get("/value/{metricType}/{metricName}", c.handleGetMetric)
@@ -99,9 +104,10 @@ func (c *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Re
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func NewMetricController(metricService services.IMetricService) *MetricController {
+func NewMetricController(metricService services.IMetricService, logger logger.ILogger) *MetricController {
 	return &MetricController{
 		metricService: metricService,
+		logger:        logger,
 	}
 }
 

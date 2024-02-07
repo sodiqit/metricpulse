@@ -2,6 +2,7 @@ package reporter_test
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
+	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -71,7 +73,13 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := new(MockHTTPClient)
-			r := reporter.NewMetricReporter("localhost:8080", mockClient)
+			logger, err := logger.Initialize("info")
+
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			r := reporter.NewMetricReporter("localhost:8080", mockClient, logger)
 
 			if tt.expectedCalls > 0 {
 				mockClient.On("Post", mock.Anything, "text/plain", mock.Anything).Return(tt.mockResponse, tt.mockError).Times(tt.expectedCalls)

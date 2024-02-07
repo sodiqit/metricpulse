@@ -3,11 +3,13 @@ package controllers_test
 import (
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/controllers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
@@ -52,8 +54,13 @@ func TestUpdateMetricHandler(t *testing.T) {
 	r := chi.NewRouter()
 
 	metricServiceMock := new(MetricServiceMock)
+	logger, err := logger.Initialize("info")
 
-	c := controllers.NewMetricController(metricServiceMock)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := controllers.NewMetricController(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -111,7 +118,13 @@ func TestGetMetricHandler(t *testing.T) {
 
 	metricServiceMock := new(MetricServiceMock)
 
-	c := controllers.NewMetricController(metricServiceMock)
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := controllers.NewMetricController(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -193,7 +206,13 @@ func TestGetAllMetricsHandler(t *testing.T) {
 
 	metricServiceMock := new(MetricServiceMock)
 
-	c := controllers.NewMetricController(metricServiceMock)
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := controllers.NewMetricController(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 

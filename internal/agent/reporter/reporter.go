@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/rs/zerolog/log"
+	"github.com/sodiqit/metricpulse.git/internal/logger"
 )
 
 type IMetricReporter interface {
@@ -14,6 +14,7 @@ type IMetricReporter interface {
 
 type MetricReporter struct {
 	Client     HTTPClient
+	logger     logger.ILogger
 	serverAddr string
 }
 
@@ -38,19 +39,20 @@ func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 		resp, err := r.Client.Post(url, "text/plain", nil)
 
 		if err != nil {
-			log.Error().Msg(fmt.Sprintf("Error sending metric %s: %v\n", metricName, err))
+			r.logger.Errorw("error while sending metric", "metricName", metricName, "error", err.Error())
 			continue
 		}
 
-		log.Log().Msg(fmt.Sprintf("Success sending metric %s", metricName))
+		r.logger.Infow("success sending metric", "metricName", metricName)
 
 		defer resp.Body.Close()
 	}
 }
 
-func NewMetricReporter(serverAddr string, client HTTPClient) *MetricReporter {
+func NewMetricReporter(serverAddr string, client HTTPClient, logger logger.ILogger) *MetricReporter {
 	return &MetricReporter{
 		Client:     client,
 		serverAddr: serverAddr,
+		logger:     logger,
 	}
 }
