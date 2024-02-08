@@ -80,7 +80,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			body:           `{"id": "temp", "type": "gauge", "value": 23.5}`,
 			returnValue:    services.MetricValue{Gauge: 23.5},
 			contentType:    "application/json",
-			expectedResult: `{"id":"temp","type":"gauge","value":23.5,"delta":0}`,
+			expectedResult: `{"id":"temp","type":"gauge","value":23.5}`,
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -90,7 +90,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			body:           `{"id": "temp", "type": "counter", "delta": 23}`,
 			returnValue:    services.MetricValue{Counter: 23},
 			contentType:    "application/json",
-			expectedResult: `{"id":"temp","type":"counter","delta":23,"value":0}`,
+			expectedResult: `{"id":"temp","type":"counter","delta":23}`,
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -196,7 +196,7 @@ func TestGetMetricHandler(t *testing.T) {
 			},
 			contentType:    "application/json",
 			body:           `{"id": "temp", "type": "gauge"}`,
-			expectedResult: `{"id": "temp", "type": "gauge", "value": 100.156, "delta": 0}`,
+			expectedResult: `{"id": "temp", "type": "gauge", "value": 100.156}`,
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -208,7 +208,7 @@ func TestGetMetricHandler(t *testing.T) {
 				metricServiceMock.On("GetMetric", mock.Anything, mock.Anything).Once().Return(services.MetricValue{Counter: 100}, nil)
 			},
 			body:           `{"id": "temp", "type": "counter"}`,
-			expectedResult: `{"id": "temp", "type": "counter", "value": 0, "delta": 100}`,
+			expectedResult: `{"id": "temp", "type": "counter", "delta": 100}`,
 			expectedStatus: http.StatusOK,
 		},
 		{

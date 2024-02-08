@@ -122,7 +122,7 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	result, err := json.Marshal(models.Metrics{ID: metrics.ID, MType: metrics.MType, Delta: &updatedValue.Counter, Value: &updatedValue.Gauge})
+	result, err := marshalMetrics(metrics.MType, metrics.ID, updatedValue)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -163,7 +163,7 @@ func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	result, err := json.Marshal(models.Metrics{ID: metrics.ID, MType: metrics.MType, Delta: &val.Counter, Value: &val.Gauge})
+	result, err := marshalMetrics(metrics.MType, metrics.ID, val)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -211,6 +211,20 @@ func isValidMetricType(metricType string) bool {
 	}
 
 	return true
+}
+
+func marshalMetrics(metricType, metricName string, val services.MetricValue) ([]byte, error) {
+	var body models.Metrics
+
+	if metricType == constants.MetricTypeGauge {
+		body = models.Metrics{ID: metricName, MType: metricType, Value: &val.Gauge}
+	}
+
+	if metricType == constants.MetricTypeCounter {
+		body = models.Metrics{ID: metricName, MType: metricType, Delta: &val.Counter}
+	}
+
+	return json.Marshal(body)
 }
 
 func parseMetricValue(metric models.Metrics) (services.MetricValue, error) {
