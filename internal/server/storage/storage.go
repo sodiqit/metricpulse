@@ -9,11 +9,12 @@ type MemStorage struct {
 	Counter map[string]int64
 }
 
-func (m *MemStorage) SaveGaugeMetric(metricType string, value float64) {
+func (m *MemStorage) SaveGaugeMetric(metricType string, value float64) float64 {
 	m.Gauge[metricType] = value
+	return value
 }
 
-func (m *MemStorage) SaveCounterMetric(metricType string, value int64) {
+func (m *MemStorage) SaveCounterMetric(metricType string, value int64) int64 {
 	val, ok := m.Counter[metricType]
 
 	if ok {
@@ -21,6 +22,8 @@ func (m *MemStorage) SaveCounterMetric(metricType string, value int64) {
 	} else {
 		m.Counter[metricType] = value
 	}
+
+	return m.Counter[metricType]
 }
 
 func (m *MemStorage) GetGaugeMetric(metricName string) (float64, error) {

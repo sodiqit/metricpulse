@@ -2,10 +2,10 @@ package agent
 
 import (
 	"math/rand"
-	"net/http"
 	"runtime"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 )
@@ -63,7 +63,9 @@ func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval 
 		return err
 	}
 
-	reporter := reporter.NewMetricReporter(serverAddr, &http.Client{}, logger)
+	client := resty.New()
+
+	reporter := reporter.NewMetricReporter(serverAddr, client, logger)
 
 	go func() {
 		for {

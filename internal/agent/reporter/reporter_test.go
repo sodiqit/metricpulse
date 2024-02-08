@@ -2,15 +2,15 @@ package reporter_test
 
 import (
 	"io"
-	"log"
 	"net/http"
-	"os"
-	"strings"
 	"testing"
 
-	"github.com/rs/zerolog"
+	"github.com/go-resty/resty/v2"
+	"github.com/jarcoal/httpmock"
+
 	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -24,13 +24,18 @@ func (m *MockHTTPClient) Post(url, contentType string, body io.Reader) (*http.Re
 }
 
 func TestMetricReporter_SendMetrics(t *testing.T) {
+	client := resty.New()
+
+	httpmock.ActivateNonDefault(client.GetClient())
+
+	defer httpmock.DeactivateAndReset()
+
+	mockURL := "http://localhost:8080/update/"
+
 	tests := []struct {
-		name           string
-		metrics        map[string]interface{}
-		expectedCalls  int
-		mockResponse   *http.Response
-		mockError      error
-		expectingError bool
+		name          string
+		metrics       map[string]interface{}
+		expectedCalls int
 	}{
 		{
 			name: "Valid gauge metric",
@@ -38,12 +43,6 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 				"testGauge": float64(1.23),
 			},
 			expectedCalls: 1,
-			mockResponse: &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader("")),
-			},
-			mockError:      nil,
-			expectingError: false,
 		},
 		{
 			name: "Valid counter metric",
@@ -51,49 +50,32 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 				"testCounter": int64(1),
 			},
 			expectedCalls: 1,
-			mockResponse: &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader("")),
-			},
-			mockError:      nil,
-			expectingError: false,
 		},
 		{
 			name: "Unsupported metric type",
 			metrics: map[string]interface{}{
 				"unknown": "unsupported value",
 			},
-			expectedCalls:  0,
-			mockResponse:   nil,
-			mockError:      nil,
-			expectingError: true,
+			expectedCalls: 0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockClient := new(MockHTTPClient)
+			httpmock.Reset()
+
+			httpmock.RegisterResponder("POST", mockURL, httpmock.NewStringResponder(200, `{"id": "test"}`))
+
 			logger, err := logger.Initialize("info")
-
 			if err != nil {
-				log.Fatalf(err.Error())
+				t.Fatalf("Error initializing logger: %s", err)
 			}
 
-			r := reporter.NewMetricReporter("localhost:8080", mockClient, logger)
-
-			if tt.expectedCalls > 0 {
-				mockClient.On("Post", mock.Anything, "text/plain", mock.Anything).Return(tt.mockResponse, tt.mockError).Times(tt.expectedCalls)
-			}
+			r := reporter.NewMetricReporter("localhost:8080", client, logger)
 
 			r.SendMetrics(tt.metrics)
 
-			mockClient.AssertExpectations(t)
+			assert.Equal(t, tt.expectedCalls, httpmock.GetTotalCallCount(), "Unexpected number of calls")
 		})
 	}
-}
-
-func TestMain(m *testing.M) {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-
-	os.Exit(m.Run())
 }
