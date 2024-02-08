@@ -266,6 +266,172 @@ func TestGetMetricHandler(t *testing.T) {
 	}
 }
 
+func TestTextUpdateMetricHandler(t *testing.T) {
+	r := chi.NewRouter()
+
+	metricServiceMock := new(MetricServiceMock)
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := controllers.NewMetricController(metricServiceMock, logger)
+
+	r.Mount("/", c.Route())
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	client := resty.New().SetBaseURL(ts.URL)
+
+	tests := []struct {
+		name           string
+		method         string
+		url            string
+		expectedStatus int
+	}{
+		{
+			name:           "Valid gauge metric",
+			method:         http.MethodPost,
+			url:            "/update/gauge/temp/23.5",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Valid counter metric",
+			method:         http.MethodPost,
+			url:            "/update/counter/temp/10",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Invalid method",
+			method:         http.MethodGet,
+			url:            "/update/gauge/temp/23.5",
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+		{
+			name:           "Invalid metric type",
+			method:         http.MethodPost,
+			url:            "/update/invalid/temp/23.5",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.expectedStatus == http.StatusOK {
+				metricServiceMock.On("SaveMetric", mock.Anything, mock.Anything, mock.Anything).Once().Return(services.MetricValue{}, nil)
+			}
+
+			req := client.R()
+
+			req.URL = tc.url
+			req.Method = tc.method
+
+			resp, err := req.Send()
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
+			metricServiceMock.AssertExpectations(t)
+		})
+	}
+}
+
+func TestTextGetMetricHandler(t *testing.T) {
+	r := chi.NewRouter()
+
+	metricServiceMock := new(MetricServiceMock)
+
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := controllers.NewMetricController(metricServiceMock, logger)
+
+	r.Mount("/", c.Route())
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	client := resty.New().SetBaseURL(ts.URL)
+
+	tests := []struct {
+		name           string
+		method         string
+		url            string
+		setupMock      func()
+		expectedResult string
+		expectedStatus int
+	}{
+		{
+			name:   "Valid gauge metric",
+			method: http.MethodGet,
+			url:    "/value/gauge/temp",
+			setupMock: func() {
+				metricServiceMock.On("GetMetric", mock.Anything, mock.Anything).Once().Return(services.MetricValue{Gauge: 100.156}, nil)
+			},
+			expectedResult: "100.156",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:   "Valid counter metric",
+			method: http.MethodGet,
+			url:    "/value/counter/temp",
+			setupMock: func() {
+				metricServiceMock.On("GetMetric", mock.Anything, mock.Anything).Once().Return(services.MetricValue{Counter: 100}, nil)
+			},
+			expectedResult: "100",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:   "Not found metric",
+			method: http.MethodGet,
+			url:    "/value/gauge/temp",
+			setupMock: func() {
+				metricServiceMock.On("GetMetric", mock.Anything, mock.Anything).Once().Return(services.MetricValue{}, errors.New("not found metric"))
+			},
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Invalid method",
+			method:         http.MethodPost,
+			url:            "/value/gauge/temp",
+			setupMock:      func() {},
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+		{
+			name:           "Invalid metric type",
+			method:         http.MethodGet,
+			url:            "/value/invalid/temp",
+			setupMock:      func() {},
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setupMock()
+
+			req := client.R()
+
+			req.Method = tc.method
+			req.URL = tc.url
+
+			resp, err := req.Send()
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
+			metricServiceMock.AssertExpectations(t)
+
+			if tc.expectedStatus == http.StatusOK {
+				assert.Equal(t, tc.expectedResult, resp.String())
+			}
+		})
+	}
+}
+
 func TestGetAllMetricsHandler(t *testing.T) {
 	r := chi.NewRouter()
 
