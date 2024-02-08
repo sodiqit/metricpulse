@@ -5,7 +5,10 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/go-resty/resty/v2"
+	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/sodiqit/metricpulse.git/internal/models"
 )
 
 type IMetricReporter interface {
@@ -13,7 +16,7 @@ type IMetricReporter interface {
 }
 
 type MetricReporter struct {
-	Client     HTTPClient
+	client     *resty.Client
 	logger     logger.ILogger
 	serverAddr string
 }
@@ -23,35 +26,37 @@ type HTTPClient interface {
 }
 
 func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
+
 	for metricName, metricValue := range metrics {
-		var metricType string
-		switch metricValue.(type) {
+		body := models.Metrics{ID: metricName}
+
+		switch val := metricValue.(type) {
 		case float64:
-			metricType = "gauge"
+			body.MType = constants.MetricTypeGauge
+			body.Value = &val
 		case int64:
-			metricType = "counter"
+			body.MType = constants.MetricTypeCounter
+			body.Delta = &val
 		default:
-			fmt.Printf("Unsupported metric type for %s\n", metricName)
+			r.logger.Errorw("unsupported metric type", "metricName", metricName)
 			continue
 		}
 
-		url := fmt.Sprintf("http://%s/update/%s/%s/%v", r.serverAddr, metricType, metricName, metricValue)
-		resp, err := r.Client.Post(url, "text/plain", nil)
+		url := fmt.Sprintf("http://%s/update/", r.serverAddr)
+		resp, err := r.client.R().SetHeader("Content-Type", "application/json").SetBody(body).Post(url)
 
 		if err != nil {
 			r.logger.Errorw("error while sending metric", "metricName", metricName, "error", err.Error())
 			continue
 		}
 
-		r.logger.Infow("success sending metric", "metricName", metricName)
-
-		defer resp.Body.Close()
+		r.logger.Infow("success sending metric", "metricName", metricName, "result", resp.String())
 	}
 }
 
-func NewMetricReporter(serverAddr string, client HTTPClient, logger logger.ILogger) *MetricReporter {
+func NewMetricReporter(serverAddr string, client *resty.Client, logger logger.ILogger) *MetricReporter {
 	return &MetricReporter{
-		Client:     client,
+		client:     client,
 		serverAddr: serverAddr,
 		logger:     logger,
 	}
