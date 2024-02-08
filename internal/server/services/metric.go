@@ -2,13 +2,14 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
 type IMetricService interface {
-	SaveMetric(metricType string, metricName string, metricValue MetricValue)
+	SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error)
 	GetMetric(metricType string, metricName string) (MetricValue, error)
 	GetAllMetrics() *storage.MemStorage
 }
@@ -22,13 +23,15 @@ type MetricValue struct {
 	Counter int64
 }
 
-func (s *MetricService) SaveMetric(metricType string, metricName string, metricValue MetricValue) {
+func (s *MetricService) SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error) {
 	switch metricType {
 	case constants.MetricTypeGauge:
-		s.Storage.SaveGaugeMetric(metricName, metricValue.Gauge)
+		return MetricValue{Gauge: s.Storage.SaveGaugeMetric(metricName, metricValue.Gauge)}, nil
 	case constants.MetricTypeCounter:
-		s.Storage.SaveCounterMetric(metricName, metricValue.Counter)
+		return MetricValue{Counter: s.Storage.SaveCounterMetric(metricName, metricValue.Counter)}, nil
 	}
+
+	return MetricValue{}, fmt.Errorf("unsupported metricType: %s", metricType)
 }
 
 func (s *MetricService) GetMetric(metricType string, metricName string) (MetricValue, error) {
