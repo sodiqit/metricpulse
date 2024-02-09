@@ -1,8 +1,10 @@
 package reporter_test
 
 import (
+	"compress/gzip"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/go-resty/resty/v2"
@@ -12,6 +14,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type MockHTTPClient struct {
@@ -64,7 +67,17 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			httpmock.Reset()
 
-			httpmock.RegisterResponder("POST", mockURL, httpmock.NewStringResponder(200, `{"id": "test"}`))
+			httpmock.RegisterResponder("POST", mockURL, func(req *http.Request) (*http.Response, error) {
+				contentEncoding := req.Header.Get("Content-Encoding")
+				isSendsGzip := strings.Contains(contentEncoding, "gzip")
+				if !isSendsGzip {
+					t.Errorf("Expected Content-Encoding header', got '%s'", contentEncoding)
+				}
+
+				_, err := gzip.NewReader(req.Body)
+				require.NoError(t, err)
+				return httpmock.NewStringResponse(200, "OK"), nil
+			})
 
 			logger, err := logger.Initialize("info")
 			if err != nil {

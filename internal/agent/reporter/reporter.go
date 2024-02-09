@@ -1,6 +1,9 @@
 package reporter
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,7 +46,15 @@ func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 		}
 
 		url := fmt.Sprintf("http://%s/update/", r.serverAddr)
-		resp, err := r.client.R().SetHeader("Content-Type", "application/json").SetBody(body).Post(url)
+
+		buf, err := wrapBodyInGzip(body)
+
+		if err != nil {
+			r.logger.Errorw("error while wrap body in gzip", "metricName", metricName, "error", err.Error())
+			continue
+		}
+
+		resp, err := r.client.R().SetHeader("Content-Type", "application/json").SetHeader("Content-Encoding", "gzip").SetBody(buf).Post(url)
 
 		if err != nil {
 			r.logger.Errorw("error while sending metric", "metricName", metricName, "error", err.Error())
@@ -60,4 +71,28 @@ func NewMetricReporter(serverAddr string, client *resty.Client, logger logger.IL
 		serverAddr: serverAddr,
 		logger:     logger,
 	}
+}
+
+func wrapBodyInGzip(body interface{}) (*bytes.Buffer, error) {
+	buf := bytes.NewBuffer(nil)
+	zb := gzip.NewWriter(buf)
+	stringBody, err := json.Marshal(body)
+
+	if err != nil {
+		return buf, fmt.Errorf("cannot marshal body: %v", body)
+	}
+
+	_, writerErr := zb.Write([]byte(stringBody))
+
+	if writerErr != nil {
+		return buf, fmt.Errorf("cannot write in gzip body: %s", stringBody)
+	}
+
+	err = zb.Close()
+
+	if err != nil {
+		return buf, fmt.Errorf("cannot close gzip writer native err: %s", err.Error())
+	}
+
+	return buf, nil
 }
