@@ -26,6 +26,7 @@ func (c *MetricController) Route() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middlewares.WithLogger(c.logger))
+	r.Use(middlewares.Gzip)
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", c.handleTextUpdateMetric)
 	r.Post("/update/", c.handleUpdateMetric)
