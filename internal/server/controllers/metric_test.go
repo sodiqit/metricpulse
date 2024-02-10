@@ -133,7 +133,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	cfg := &config.Config{}
+	cfg := &config.Config{StoreInterval: 100}
 
 	c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
 
@@ -367,7 +367,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	cfg := &config.Config{}
+	cfg := &config.Config{StoreInterval: 100}
 
 	c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
 
