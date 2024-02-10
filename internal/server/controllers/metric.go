@@ -13,6 +13,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/models"
+	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 )
@@ -20,6 +21,8 @@ import (
 type MetricController struct {
 	metricService services.IMetricService
 	logger        logger.ILogger
+	uploadService services.IUploadService
+	cfg           *config.Config
 }
 
 func (c *MetricController) Route() *chi.Mux {
@@ -58,6 +61,10 @@ func (c *MetricController) handleTextUpdateMetric(w http.ResponseWriter, r *http
 	}
 
 	c.metricService.SaveMetric(metricType, metricName, val)
+
+	if c.cfg.StoreInterval == 0 {
+		c.uploadService.Save()
+	}
 
 	w.Write([]byte{})
 }
@@ -130,6 +137,10 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if c.cfg.StoreInterval == 0 {
+		c.uploadService.Save()
+	}
+
 	w.Header().Add("Content-Type", "application/json")
 
 	w.Write(result)
@@ -199,10 +210,12 @@ func (c *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Re
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func NewMetricController(metricService services.IMetricService, logger logger.ILogger) *MetricController {
+func NewMetricController(metricService services.IMetricService, logger logger.ILogger, uploadService services.IUploadService, cfg *config.Config) *MetricController {
 	return &MetricController{
-		metricService: metricService,
-		logger:        logger,
+		metricService,
+		logger,
+		uploadService,
+		cfg,
 	}
 }
 
