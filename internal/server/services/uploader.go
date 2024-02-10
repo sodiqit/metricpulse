@@ -41,6 +41,10 @@ func (u *UploadService) Load() error {
 		return err
 	}
 
+	if string(data) == "" {
+		return nil
+	}
+
 	var storage storage.MemStorage
 
 	jsonErr := json.Unmarshal(data, &storage)
