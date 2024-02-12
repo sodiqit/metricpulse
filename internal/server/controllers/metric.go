@@ -11,8 +11,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
+	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
-	"github.com/sodiqit/metricpulse.git/internal/models"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
@@ -96,7 +96,7 @@ func (c *MetricController) handleTextGetMetric(w http.ResponseWriter, r *http.Re
 }
 
 func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
-	var metrics models.Metrics
+	var metrics entities.Metrics
 
 	contentType := r.Header.Get("Content-Type")
 
@@ -147,7 +147,7 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 }
 
 func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Request) {
-	var metrics models.Metrics
+	var metrics entities.Metrics
 
 	contentType := r.Header.Get("Content-Type")
 
@@ -228,20 +228,20 @@ func isValidMetricType(metricType string) bool {
 }
 
 func marshalMetrics(metricType, metricName string, val services.MetricValue) ([]byte, error) {
-	var body models.Metrics
+	var body entities.Metrics
 
 	if metricType == constants.MetricTypeGauge {
-		body = models.Metrics{ID: metricName, MType: metricType, Value: &val.Gauge}
+		body = entities.Metrics{ID: metricName, MType: metricType, Value: &val.Gauge}
 	}
 
 	if metricType == constants.MetricTypeCounter {
-		body = models.Metrics{ID: metricName, MType: metricType, Delta: &val.Counter}
+		body = entities.Metrics{ID: metricName, MType: metricType, Delta: &val.Counter}
 	}
 
 	return json.Marshal(body)
 }
 
-func parseMetricValue(metric models.Metrics) (services.MetricValue, error) {
+func parseMetricValue(metric entities.Metrics) (services.MetricValue, error) {
 	if metric.MType == constants.MetricTypeGauge {
 		if metric.Value == nil {
 			return services.MetricValue{}, errors.New("metric value not provided: provide float64")

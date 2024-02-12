@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sodiqit/metricpulse.git/internal/constants"
+	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
-	"github.com/sodiqit/metricpulse.git/internal/models"
 )
 
 type IMetricReporter interface {
@@ -31,7 +31,7 @@ type HTTPClient interface {
 func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 
 	for metricName, metricValue := range metrics {
-		body := models.Metrics{ID: metricName}
+		body := entities.Metrics{ID: metricName}
 
 		switch val := metricValue.(type) {
 		case float64:
