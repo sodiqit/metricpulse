@@ -13,81 +13,11 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
-	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
-	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-func TestSyncSaveMetricsInFile(t *testing.T) {
-	t.Run("should not save metric in file if storage interval > 0", func(t *testing.T) {
-		r := chi.NewRouter()
-
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-		uploadServiceMock := metricuploader.NewMockUploader(ctrl)
-		logger, err := logger.Initialize("info")
-
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-
-		cfg := &config.Config{StoreInterval: 100}
-
-		c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
-
-		r.Mount("/", c.Route())
-
-		ts := httptest.NewServer(r)
-		defer ts.Close()
-
-		metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{Gauge: 23.5}, nil)
-		uploadServiceMock.EXPECT().Save().Times(0)
-
-		client := resty.New().SetBaseURL(ts.URL).SetHeader("Content-Type", "application/json")
-
-		resp, httpErr := client.R().SetBody(`{"id": "temp", "type": "gauge", "value": 23.5}`).Post("/update/")
-		require.NoError(t, httpErr)
-		require.Equal(t, http.StatusOK, resp.StatusCode())
-	})
-
-	t.Run("should save metric in file if storage interval = 0", func(t *testing.T) {
-		r := chi.NewRouter()
-
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-		uploadServiceMock := metricuploader.NewMockUploader(ctrl)
-		logger, err := logger.Initialize("info")
-
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-
-		cfg := &config.Config{StoreInterval: 0}
-
-		c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
-
-		r.Mount("/", c.Route())
-
-		ts := httptest.NewServer(r)
-		defer ts.Close()
-
-		client := resty.New().SetBaseURL(ts.URL)
-
-		metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{Gauge: 23.5}, nil)
-		uploadServiceMock.EXPECT().Save().Times(1).Return(nil)
-
-		resp, httpErr := client.R().SetBody(`{"id": "temp", "type": "gauge", "value": 23.5}`).SetHeader("Content-Type", "application/json").Post("/update/")
-		require.NoError(t, httpErr)
-		require.Equal(t, http.StatusOK, resp.StatusCode())
-	})
-}
 
 func TestUpdateMetricHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -96,16 +26,13 @@ func TestUpdateMetricHandler(t *testing.T) {
 	r := chi.NewRouter()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	cfg := &config.Config{StoreInterval: 100}
-
-	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -213,16 +140,13 @@ func TestGetMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	cfg := &config.Config{}
-
-	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -334,16 +258,13 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	cfg := &config.Config{StoreInterval: 100}
-
-	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -410,16 +331,13 @@ func TestTextGetMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	cfg := &config.Config{}
-
-	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -509,16 +427,13 @@ func TestGetAllMetricsHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	cfg := &config.Config{}
-
-	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger)
 
 	r.Mount("/", c.Route())
 

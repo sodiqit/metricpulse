@@ -30,8 +30,8 @@ func RunServer(config *config.Config) error {
 
 	defer uploadService.Close()
 
-	metricService := metricprocessor.New(storage)
-	metricAdapter := metric.New(metricService, logger, uploadService, config)
+	metricService := metricprocessor.New(storage, uploadService, config)
+	metricAdapter := metric.New(metricService, logger)
 
 	r := chi.NewRouter()
 	r.Mount("/", metricAdapter.Route())

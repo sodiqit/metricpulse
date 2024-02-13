@@ -1,11 +1,12 @@
 package metricprocessor
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
+	"github.com/sodiqit/metricpulse.git/internal/server/config"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
@@ -16,7 +17,9 @@ type MetricService interface {
 }
 
 type MetricProcessor struct {
-	storage storage.Storage
+	storage  storage.Storage
+	uploader metricuploader.Uploader
+	config   *config.Config
 }
 
 type MetricValue struct {
@@ -25,26 +28,26 @@ type MetricValue struct {
 }
 
 func (s *MetricProcessor) SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error) {
+	var result MetricValue
+	var saveErr error
+
 	switch metricType {
 	case constants.MetricTypeGauge:
 		val, err := s.storage.SaveGaugeMetric(metricName, metricValue.Gauge)
-
-		if err != nil {
-			return MetricValue{}, err
-		}
-
-		return MetricValue{Gauge: val}, nil
+		result, saveErr = MetricValue{Gauge: val}, err
 	case constants.MetricTypeCounter:
 		val, err := s.storage.SaveCounterMetric(metricName, metricValue.Counter)
-
-		if err != nil {
-			return MetricValue{}, err
-		}
-
-		return MetricValue{Counter: val}, nil
+		result, saveErr = MetricValue{Counter: val}, err
+	default:
+		saveErr = fmt.Errorf("unsupported metricType: %s", metricType)
 	}
 
-	return MetricValue{}, fmt.Errorf("unsupported metricType: %s", metricType)
+	if s.config.StoreInterval == 0 && saveErr == nil {
+		err := s.uploader.Save()
+		saveErr = err
+	}
+
+	return result, saveErr
 }
 
 func (s *MetricProcessor) GetMetric(metricType string, metricName string) (MetricValue, error) {
@@ -57,13 +60,13 @@ func (s *MetricProcessor) GetMetric(metricType string, metricName string) (Metri
 		return MetricValue{Counter: val}, err
 	}
 
-	return MetricValue{}, errors.New("not correct metric type")
+	return MetricValue{}, fmt.Errorf("unsupported metricType: %s", metricType)
 }
 
 func (s *MetricProcessor) GetAllMetrics() (entities.TotalMetrics, error) {
 	return s.storage.GetAllMetrics()
 }
 
-func New(storage storage.Storage) *MetricProcessor {
-	return &MetricProcessor{storage}
+func New(storage storage.Storage, uploader metricuploader.Uploader, cfg *config.Config) *MetricProcessor {
+	return &MetricProcessor{storage, uploader, cfg}
 }

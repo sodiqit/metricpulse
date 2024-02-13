@@ -14,16 +14,12 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/middlewares"
-	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
-	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 )
 
 type Adapter struct {
 	metricService metricprocessor.MetricService
 	logger        logger.ILogger
-	uploadService metricuploader.Uploader
-	cfg           *config.Config
 }
 
 func (a *Adapter) Route() *chi.Mux {
@@ -62,10 +58,6 @@ func (a *Adapter) handleTextUpdateMetric(w http.ResponseWriter, r *http.Request)
 	}
 
 	a.metricService.SaveMetric(metricType, metricName, val)
-
-	if a.cfg.StoreInterval == 0 {
-		a.uploadService.Save()
-	}
 
 	w.Write([]byte{})
 }
@@ -136,10 +128,6 @@ func (a *Adapter) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	if a.cfg.StoreInterval == 0 {
-		a.uploadService.Save()
 	}
 
 	w.Header().Add("Content-Type", "application/json")
@@ -216,12 +204,10 @@ func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func New(metricService metricprocessor.MetricService, logger logger.ILogger, uploadService metricuploader.Uploader, cfg *config.Config) *Adapter {
+func New(metricService metricprocessor.MetricService, logger logger.ILogger) *Adapter {
 	return &Adapter{
 		metricService,
 		logger,
-		uploadService,
-		cfg,
 	}
 }
 
