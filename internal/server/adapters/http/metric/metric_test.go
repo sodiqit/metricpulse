@@ -15,54 +15,11 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-type MetricServiceMock struct {
-	mock.Mock
-}
-
-func (m *MetricServiceMock) SaveMetric(metricType, metricKind string, val metricprocessor.MetricValue) (metricprocessor.MetricValue, error) {
-	args := m.Called(metricType, metricKind, val)
-	return args.Get(0).(metricprocessor.MetricValue), args.Error(1)
-}
-
-func (m *MetricServiceMock) GetMetric(metricType, metricKind string) (metricprocessor.MetricValue, error) {
-	args := m.Called(metricType, metricKind)
-	return args.Get(0).(metricprocessor.MetricValue), args.Error(1)
-}
-
-func (m *MetricServiceMock) GetAllMetrics() (entities.TotalMetrics, error) {
-	args := m.Called()
-	return args.Get(0).(entities.TotalMetrics), args.Error(1)
-}
-
-type UploadServiceMock struct {
-	mock.Mock
-}
-
-func (u *UploadServiceMock) Save() error {
-	args := u.Called()
-	return args.Error(0)
-}
-
-func (u *UploadServiceMock) Load() error {
-	args := u.Called()
-	return args.Error(0)
-}
-
-func (u *UploadServiceMock) Close() error {
-	args := u.Called()
-	return args.Error(0)
-}
-
-func (u *UploadServiceMock) StoreInterval() error {
-	args := u.Called()
-	return args.Error(0)
-}
 
 func TestSyncSaveMetricsInFile(t *testing.T) {
 	t.Run("should not save metric in file if storage interval > 0", func(t *testing.T) {
@@ -72,7 +29,7 @@ func TestSyncSaveMetricsInFile(t *testing.T) {
 		defer ctrl.Finish()
 
 		metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-		uploadServiceMock := new(UploadServiceMock)
+		uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 		logger, err := logger.Initialize("info")
 
 		if err != nil {
@@ -89,14 +46,13 @@ func TestSyncSaveMetricsInFile(t *testing.T) {
 		defer ts.Close()
 
 		metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{Gauge: 23.5}, nil)
+		uploadServiceMock.EXPECT().Save().Times(0)
 
 		client := resty.New().SetBaseURL(ts.URL).SetHeader("Content-Type", "application/json")
 
 		resp, httpErr := client.R().SetBody(`{"id": "temp", "type": "gauge", "value": 23.5}`).Post("/update/")
 		require.NoError(t, httpErr)
 		require.Equal(t, http.StatusOK, resp.StatusCode())
-
-		uploadServiceMock.AssertNotCalled(t, "Save")
 	})
 
 	t.Run("should save metric in file if storage interval = 0", func(t *testing.T) {
@@ -106,7 +62,7 @@ func TestSyncSaveMetricsInFile(t *testing.T) {
 		defer ctrl.Finish()
 
 		metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-		uploadServiceMock := new(UploadServiceMock)
+		uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 		logger, err := logger.Initialize("info")
 
 		if err != nil {
@@ -125,13 +81,11 @@ func TestSyncSaveMetricsInFile(t *testing.T) {
 		client := resty.New().SetBaseURL(ts.URL)
 
 		metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{Gauge: 23.5}, nil)
-		uploadServiceMock.On("Save").Once().Return(nil)
+		uploadServiceMock.EXPECT().Save().Times(1).Return(nil)
 
 		resp, httpErr := client.R().SetBody(`{"id": "temp", "type": "gauge", "value": 23.5}`).SetHeader("Content-Type", "application/json").Post("/update/")
 		require.NoError(t, httpErr)
 		require.Equal(t, http.StatusOK, resp.StatusCode())
-
-		uploadServiceMock.AssertExpectations(t)
 	})
 }
 
@@ -139,11 +93,10 @@ func TestUpdateMetricHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-
 	r := chi.NewRouter()
 
-	uploadServiceMock := new(UploadServiceMock)
+	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
@@ -260,7 +213,7 @@ func TestGetMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := new(UploadServiceMock)
+	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
@@ -381,7 +334,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := new(UploadServiceMock)
+	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
@@ -457,7 +410,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := new(UploadServiceMock)
+	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
@@ -556,7 +509,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
-	uploadServiceMock := new(UploadServiceMock)
+	uploadServiceMock := metricuploader.NewMockUploader(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
