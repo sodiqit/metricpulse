@@ -1,4 +1,4 @@
-package controllers_test
+package metric_test
 
 import (
 	"errors"
@@ -10,8 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-resty/resty/v2"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
-	"github.com/sodiqit/metricpulse.git/internal/server/controllers"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +71,7 @@ func TestSyncSaveMetricsInFile(t *testing.T) {
 
 		cfg := &config.Config{StoreInterval: 100}
 
-		c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
+		c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
 
 		r.Mount("/", c.Route())
 
@@ -102,7 +102,7 @@ func TestSyncSaveMetricsInFile(t *testing.T) {
 
 		cfg := &config.Config{StoreInterval: 0}
 
-		c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
+		c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
 
 		r.Mount("/", c.Route())
 
@@ -135,7 +135,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	cfg := &config.Config{StoreInterval: 100}
 
-	c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
 
 	r.Mount("/", c.Route())
 
@@ -250,7 +250,7 @@ func TestGetMetricHandler(t *testing.T) {
 
 	cfg := &config.Config{}
 
-	c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
 
 	r.Mount("/", c.Route())
 
@@ -369,7 +369,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 
 	cfg := &config.Config{StoreInterval: 100}
 
-	c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
 
 	r.Mount("/", c.Route())
 
@@ -443,7 +443,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 
 	cfg := &config.Config{}
 
-	c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
 
 	r.Mount("/", c.Route())
 
@@ -540,7 +540,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 
 	cfg := &config.Config{}
 
-	c := controllers.NewMetricController(metricServiceMock, logger, uploadServiceMock, cfg)
+	c := metric.New(metricServiceMock, logger, uploadServiceMock, cfg)
 
 	r.Mount("/", c.Route())
 

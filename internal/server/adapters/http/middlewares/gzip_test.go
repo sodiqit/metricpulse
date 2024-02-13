@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sodiqit/metricpulse.git/internal/server/middlewares"
+	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/middlewares"
 	"github.com/stretchr/testify/require"
 )
 

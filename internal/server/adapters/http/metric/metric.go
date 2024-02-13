@@ -1,4 +1,4 @@
-package controllers
+package metric
 
 import (
 	"encoding/json"
@@ -13,36 +13,36 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
-	"github.com/sodiqit/metricpulse.git/internal/server/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
 )
 
-type MetricController struct {
+type Adapter struct {
 	metricService services.IMetricService
 	logger        logger.ILogger
 	uploadService services.IUploadService
 	cfg           *config.Config
 }
 
-func (c *MetricController) Route() *chi.Mux {
+func (a *Adapter) Route() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Use(middlewares.WithLogger(c.logger))
+	r.Use(middlewares.WithLogger(a.logger))
 	r.Use(middlewares.Gzip)
 
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", c.handleTextUpdateMetric)
-	r.Post("/update/", c.handleUpdateMetric)
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", a.handleTextUpdateMetric)
+	r.Post("/update/", a.handleUpdateMetric)
 
-	r.Get("/value/{metricType}/{metricName}", c.handleTextGetMetric)
-	r.Post("/value/", c.handleGetMetric)
+	r.Get("/value/{metricType}/{metricName}", a.handleTextGetMetric)
+	r.Post("/value/", a.handleGetMetric)
 
-	r.Get("/", c.handleGetAllMetrics)
+	r.Get("/", a.handleGetAllMetrics)
 
 	return r
 }
 
-func (c *MetricController) handleTextUpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) handleTextUpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
@@ -60,16 +60,16 @@ func (c *MetricController) handleTextUpdateMetric(w http.ResponseWriter, r *http
 		return
 	}
 
-	c.metricService.SaveMetric(metricType, metricName, val)
+	a.metricService.SaveMetric(metricType, metricName, val)
 
-	if c.cfg.StoreInterval == 0 {
-		c.uploadService.Save()
+	if a.cfg.StoreInterval == 0 {
+		a.uploadService.Save()
 	}
 
 	w.Write([]byte{})
 }
 
-func (c *MetricController) handleTextGetMetric(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) handleTextGetMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 
@@ -80,7 +80,7 @@ func (c *MetricController) handleTextGetMetric(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	val, err := c.metricService.GetMetric(metricType, metricName)
+	val, err := a.metricService.GetMetric(metricType, metricName)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metricName), http.StatusNotFound)
@@ -95,7 +95,7 @@ func (c *MetricController) handleTextGetMetric(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
 	var metrics entities.Metrics
 
 	contentType := r.Header.Get("Content-Type")
@@ -123,7 +123,7 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	updatedValue, err := c.metricService.SaveMetric(metrics.MType, metrics.ID, val)
+	updatedValue, err := a.metricService.SaveMetric(metrics.MType, metrics.ID, val)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -137,8 +137,8 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if c.cfg.StoreInterval == 0 {
-		c.uploadService.Save()
+	if a.cfg.StoreInterval == 0 {
+		a.uploadService.Save()
 	}
 
 	w.Header().Add("Content-Type", "application/json")
@@ -146,7 +146,7 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 	w.Write(result)
 }
 
-func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) handleGetMetric(w http.ResponseWriter, r *http.Request) {
 	var metrics entities.Metrics
 
 	contentType := r.Header.Get("Content-Type")
@@ -168,7 +168,7 @@ func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	val, err := c.metricService.GetMetric(metrics.MType, metrics.ID)
+	val, err := a.metricService.GetMetric(metrics.MType, metrics.ID)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metrics.ID), http.StatusNotFound)
@@ -187,8 +187,8 @@ func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Reques
 	w.Write(result)
 }
 
-func (c *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := c.metricService.GetAllMetrics()
+func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	metrics := a.metricService.GetAllMetrics()
 
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString("<html><head><title>Metrics</title></head><body>")
@@ -210,8 +210,8 @@ func (c *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Re
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func NewMetricController(metricService services.IMetricService, logger logger.ILogger, uploadService services.IUploadService, cfg *config.Config) *MetricController {
-	return &MetricController{
+func New(metricService services.IMetricService, logger logger.ILogger, uploadService services.IUploadService, cfg *config.Config) *Adapter {
+	return &Adapter{
 		metricService,
 		logger,
 		uploadService,
