@@ -1,4 +1,4 @@
-package controllers
+package metric
 
 import (
 	"encoding/json"
@@ -11,38 +11,35 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
+	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
-	"github.com/sodiqit/metricpulse.git/internal/models"
-	"github.com/sodiqit/metricpulse.git/internal/server/config"
-	"github.com/sodiqit/metricpulse.git/internal/server/middlewares"
-	"github.com/sodiqit/metricpulse.git/internal/server/services"
+	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/middlewares"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
 )
 
-type MetricController struct {
-	metricService services.IMetricService
+type Adapter struct {
+	metricService metricprocessor.MetricService
 	logger        logger.ILogger
-	uploadService services.IUploadService
-	cfg           *config.Config
 }
 
-func (c *MetricController) Route() *chi.Mux {
+func (a *Adapter) Route() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Use(middlewares.WithLogger(c.logger))
+	r.Use(middlewares.WithLogger(a.logger))
 	r.Use(middlewares.Gzip)
 
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", c.handleTextUpdateMetric)
-	r.Post("/update/", c.handleUpdateMetric)
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", a.handleTextUpdateMetric)
+	r.Post("/update/", a.handleUpdateMetric)
 
-	r.Get("/value/{metricType}/{metricName}", c.handleTextGetMetric)
-	r.Post("/value/", c.handleGetMetric)
+	r.Get("/value/{metricType}/{metricName}", a.handleTextGetMetric)
+	r.Post("/value/", a.handleGetMetric)
 
-	r.Get("/", c.handleGetAllMetrics)
+	r.Get("/", a.handleGetAllMetrics)
 
 	return r
 }
 
-func (c *MetricController) handleTextUpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) handleTextUpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
@@ -60,16 +57,12 @@ func (c *MetricController) handleTextUpdateMetric(w http.ResponseWriter, r *http
 		return
 	}
 
-	c.metricService.SaveMetric(metricType, metricName, val)
-
-	if c.cfg.StoreInterval == 0 {
-		c.uploadService.Save()
-	}
+	a.metricService.SaveMetric(metricType, metricName, val)
 
 	w.Write([]byte{})
 }
 
-func (c *MetricController) handleTextGetMetric(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) handleTextGetMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 
@@ -80,7 +73,7 @@ func (c *MetricController) handleTextGetMetric(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	val, err := c.metricService.GetMetric(metricType, metricName)
+	val, err := a.metricService.GetMetric(metricType, metricName)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metricName), http.StatusNotFound)
@@ -95,8 +88,8 @@ func (c *MetricController) handleTextGetMetric(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
-	var metrics models.Metrics
+func (a *Adapter) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
+	var metrics entities.Metrics
 
 	contentType := r.Header.Get("Content-Type")
 
@@ -123,7 +116,7 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	updatedValue, err := c.metricService.SaveMetric(metrics.MType, metrics.ID, val)
+	updatedValue, err := a.metricService.SaveMetric(metrics.MType, metrics.ID, val)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -137,17 +130,13 @@ func (c *MetricController) handleUpdateMetric(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if c.cfg.StoreInterval == 0 {
-		c.uploadService.Save()
-	}
-
 	w.Header().Add("Content-Type", "application/json")
 
 	w.Write(result)
 }
 
-func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Request) {
-	var metrics models.Metrics
+func (a *Adapter) handleGetMetric(w http.ResponseWriter, r *http.Request) {
+	var metrics entities.Metrics
 
 	contentType := r.Header.Get("Content-Type")
 
@@ -168,7 +157,7 @@ func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	val, err := c.metricService.GetMetric(metrics.MType, metrics.ID)
+	val, err := a.metricService.GetMetric(metrics.MType, metrics.ID)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metrics.ID), http.StatusNotFound)
@@ -187,8 +176,13 @@ func (c *MetricController) handleGetMetric(w http.ResponseWriter, r *http.Reques
 	w.Write(result)
 }
 
-func (c *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := c.metricService.GetAllMetrics()
+func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	metrics, err := a.metricService.GetAllMetrics()
+
+	if err != nil {
+		http.Error(w, "Cannot find metrics", http.StatusInternalServerError)
+		return
+	}
 
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString("<html><head><title>Metrics</title></head><body>")
@@ -210,12 +204,10 @@ func (c *MetricController) handleGetAllMetrics(w http.ResponseWriter, r *http.Re
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func NewMetricController(metricService services.IMetricService, logger logger.ILogger, uploadService services.IUploadService, cfg *config.Config) *MetricController {
-	return &MetricController{
+func New(metricService metricprocessor.MetricService, logger logger.ILogger) *Adapter {
+	return &Adapter{
 		metricService,
 		logger,
-		uploadService,
-		cfg,
 	}
 }
 
@@ -227,56 +219,56 @@ func isValidMetricType(metricType string) bool {
 	return true
 }
 
-func marshalMetrics(metricType, metricName string, val services.MetricValue) ([]byte, error) {
-	var body models.Metrics
+func marshalMetrics(metricType, metricName string, val metricprocessor.MetricValue) ([]byte, error) {
+	var body entities.Metrics
 
 	if metricType == constants.MetricTypeGauge {
-		body = models.Metrics{ID: metricName, MType: metricType, Value: &val.Gauge}
+		body = entities.Metrics{ID: metricName, MType: metricType, Value: &val.Gauge}
 	}
 
 	if metricType == constants.MetricTypeCounter {
-		body = models.Metrics{ID: metricName, MType: metricType, Delta: &val.Counter}
+		body = entities.Metrics{ID: metricName, MType: metricType, Delta: &val.Counter}
 	}
 
 	return json.Marshal(body)
 }
 
-func parseMetricValue(metric models.Metrics) (services.MetricValue, error) {
+func parseMetricValue(metric entities.Metrics) (metricprocessor.MetricValue, error) {
 	if metric.MType == constants.MetricTypeGauge {
 		if metric.Value == nil {
-			return services.MetricValue{}, errors.New("metric value not provided: provide float64")
+			return metricprocessor.MetricValue{}, errors.New("metric value not provided: provide float64")
 		}
 
-		return services.MetricValue{Gauge: *metric.Value}, nil
+		return metricprocessor.MetricValue{Gauge: *metric.Value}, nil
 	}
 
 	if metric.MType == constants.MetricTypeCounter {
 		if metric.Delta == nil {
-			return services.MetricValue{}, errors.New("metric value not provided: provide int64")
+			return metricprocessor.MetricValue{}, errors.New("metric value not provided: provide int64")
 		}
 
-		return services.MetricValue{Counter: *metric.Delta}, nil
+		return metricprocessor.MetricValue{Counter: *metric.Delta}, nil
 	}
-	return services.MetricValue{}, fmt.Errorf("unknown metricType: %s", metric.MType)
+	return metricprocessor.MetricValue{}, fmt.Errorf("unknown metricType: %s", metric.MType)
 }
 
-func parseString2MetricValue(metricType string, value string) (services.MetricValue, error) {
+func parseString2MetricValue(metricType string, value string) (metricprocessor.MetricValue, error) {
 	if metricType == constants.MetricTypeGauge {
 		val, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return services.MetricValue{}, errors.New("invalid value metric: provide float64")
+			return metricprocessor.MetricValue{}, errors.New("invalid value metric: provide float64")
 		}
 
-		return services.MetricValue{Gauge: val}, nil
+		return metricprocessor.MetricValue{Gauge: val}, nil
 	}
 
 	if metricType == constants.MetricTypeCounter {
 		val, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return services.MetricValue{}, errors.New("invalid value metric: provide int64")
+			return metricprocessor.MetricValue{}, errors.New("invalid value metric: provide int64")
 		}
 
-		return services.MetricValue{Counter: val}, nil
+		return metricprocessor.MetricValue{Counter: val}, nil
 	}
-	return services.MetricValue{}, fmt.Errorf("unknown metricType: %s", metricType)
+	return metricprocessor.MetricValue{}, fmt.Errorf("unknown metricType: %s", metricType)
 }
