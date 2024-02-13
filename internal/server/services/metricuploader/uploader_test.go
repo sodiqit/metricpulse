@@ -1,4 +1,4 @@
-package services_test
+package metricuploader_test
 
 import (
 	"io"
@@ -8,7 +8,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
-	"github.com/sodiqit/metricpulse.git/internal/server/services"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +56,7 @@ func TestUploadService_Save(t *testing.T) {
 				cfg := config.Config{FileStoragePath: file.Name()}
 				store := storage.NewMemStorage()
 
-				uploadService, err := services.NewUploadService(&cfg, store, logger)
+				uploadService, err := metricuploader.New(&cfg, store, logger)
 				require.NoError(t, err)
 
 				defer uploadService.Close()
@@ -75,7 +75,7 @@ func TestUploadService_Save(t *testing.T) {
 				cfg := config.Config{FileStoragePath: file.Name()}
 				store, expectedRes, _ := setupStoreWithExpectedString(t)
 
-				uploadService, err := services.NewUploadService(&cfg, store, logger)
+				uploadService, err := metricuploader.New(&cfg, store, logger)
 				require.NoError(t, err)
 
 				defer uploadService.Close()
@@ -99,7 +99,7 @@ func TestUploadService_Save(t *testing.T) {
 				cfg := config.Config{FileStoragePath: ""}
 				store, _, _ := setupStoreWithExpectedString(t)
 
-				uploadService, err := services.NewUploadService(&cfg, store, logger)
+				uploadService, err := metricuploader.New(&cfg, store, logger)
 				require.NoError(t, err)
 
 				defer uploadService.Close()
@@ -130,7 +130,7 @@ func TestUploadService_Save(t *testing.T) {
 
 				store, expectedRes, _ := setupStoreWithExpectedString(t)
 
-				uploadService, err := services.NewUploadService(&cfg, store, logger)
+				uploadService, err := metricuploader.New(&cfg, store, logger)
 				require.NoError(t, err)
 
 				defer uploadService.Close()
@@ -177,7 +177,7 @@ func TestUploadService_Load(t *testing.T) {
 				cfg := config.Config{FileStoragePath: ""}
 				store := storage.NewMemStorage()
 
-				uploadService, err := services.NewUploadService(&cfg, store, logger)
+				uploadService, err := metricuploader.New(&cfg, store, logger)
 				require.NoError(t, err)
 
 				defer uploadService.Close()
@@ -213,7 +213,7 @@ func TestUploadService_Load(t *testing.T) {
 				cfg := config.Config{FileStoragePath: file.Name(), Restore: false}
 				store := storage.NewMemStorage()
 
-				uploadService, err := services.NewUploadService(&cfg, store, logger)
+				uploadService, err := metricuploader.New(&cfg, store, logger)
 				require.NoError(t, err)
 
 				defer uploadService.Close()
@@ -249,7 +249,7 @@ func TestUploadService_Load(t *testing.T) {
 				cfg := config.Config{FileStoragePath: file.Name(), Restore: true}
 				store := storage.NewMemStorage()
 
-				uploadService, err := services.NewUploadService(&cfg, store, logger)
+				uploadService, err := metricuploader.New(&cfg, store, logger)
 				require.NoError(t, err)
 
 				defer uploadService.Close()

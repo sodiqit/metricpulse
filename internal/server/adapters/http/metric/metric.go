@@ -15,13 +15,14 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
-	"github.com/sodiqit/metricpulse.git/internal/server/services"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 )
 
 type Adapter struct {
-	metricService services.IMetricService
+	metricService metricprocessor.MetricService
 	logger        logger.ILogger
-	uploadService services.IUploadService
+	uploadService metricuploader.Uploader
 	cfg           *config.Config
 }
 
@@ -215,7 +216,7 @@ func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func New(metricService services.IMetricService, logger logger.ILogger, uploadService services.IUploadService, cfg *config.Config) *Adapter {
+func New(metricService metricprocessor.MetricService, logger logger.ILogger, uploadService metricuploader.Uploader, cfg *config.Config) *Adapter {
 	return &Adapter{
 		metricService,
 		logger,
@@ -232,7 +233,7 @@ func isValidMetricType(metricType string) bool {
 	return true
 }
 
-func marshalMetrics(metricType, metricName string, val services.MetricValue) ([]byte, error) {
+func marshalMetrics(metricType, metricName string, val metricprocessor.MetricValue) ([]byte, error) {
 	var body entities.Metrics
 
 	if metricType == constants.MetricTypeGauge {
@@ -246,42 +247,42 @@ func marshalMetrics(metricType, metricName string, val services.MetricValue) ([]
 	return json.Marshal(body)
 }
 
-func parseMetricValue(metric entities.Metrics) (services.MetricValue, error) {
+func parseMetricValue(metric entities.Metrics) (metricprocessor.MetricValue, error) {
 	if metric.MType == constants.MetricTypeGauge {
 		if metric.Value == nil {
-			return services.MetricValue{}, errors.New("metric value not provided: provide float64")
+			return metricprocessor.MetricValue{}, errors.New("metric value not provided: provide float64")
 		}
 
-		return services.MetricValue{Gauge: *metric.Value}, nil
+		return metricprocessor.MetricValue{Gauge: *metric.Value}, nil
 	}
 
 	if metric.MType == constants.MetricTypeCounter {
 		if metric.Delta == nil {
-			return services.MetricValue{}, errors.New("metric value not provided: provide int64")
+			return metricprocessor.MetricValue{}, errors.New("metric value not provided: provide int64")
 		}
 
-		return services.MetricValue{Counter: *metric.Delta}, nil
+		return metricprocessor.MetricValue{Counter: *metric.Delta}, nil
 	}
-	return services.MetricValue{}, fmt.Errorf("unknown metricType: %s", metric.MType)
+	return metricprocessor.MetricValue{}, fmt.Errorf("unknown metricType: %s", metric.MType)
 }
 
-func parseString2MetricValue(metricType string, value string) (services.MetricValue, error) {
+func parseString2MetricValue(metricType string, value string) (metricprocessor.MetricValue, error) {
 	if metricType == constants.MetricTypeGauge {
 		val, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return services.MetricValue{}, errors.New("invalid value metric: provide float64")
+			return metricprocessor.MetricValue{}, errors.New("invalid value metric: provide float64")
 		}
 
-		return services.MetricValue{Gauge: val}, nil
+		return metricprocessor.MetricValue{Gauge: val}, nil
 	}
 
 	if metricType == constants.MetricTypeCounter {
 		val, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return services.MetricValue{}, errors.New("invalid value metric: provide int64")
+			return metricprocessor.MetricValue{}, errors.New("invalid value metric: provide int64")
 		}
 
-		return services.MetricValue{Counter: val}, nil
+		return metricprocessor.MetricValue{Counter: val}, nil
 	}
-	return services.MetricValue{}, fmt.Errorf("unknown metricType: %s", metricType)
+	return metricprocessor.MetricValue{}, fmt.Errorf("unknown metricType: %s", metricType)
 }

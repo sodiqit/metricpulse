@@ -1,4 +1,4 @@
-package services
+package metricuploader
 
 import (
 	"encoding/json"
@@ -12,28 +12,28 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
-type IUploadService interface {
+type Uploader interface {
 	Save() error
 	Load() error
 	StoreInterval() error
 	Close() error
 }
 
-type UploadService struct {
+type MetricUploader struct {
 	cfg     *config.Config
-	storage storage.IStorage
+	storage storage.Storage
 	file    *os.File
 	logger  logger.ILogger
 }
 
-func (u *UploadService) Close() error {
+func (u *MetricUploader) Close() error {
 	if u.file == nil {
 		return nil
 	}
 	return u.file.Close()
 }
 
-func (u *UploadService) Load() error {
+func (u *MetricUploader) Load() error {
 	if u.file == nil || !u.cfg.Restore {
 		return nil
 	}
@@ -67,7 +67,7 @@ func (u *UploadService) Load() error {
 	return nil
 }
 
-func (u *UploadService) Save() error {
+func (u *MetricUploader) Save() error {
 	if u.file == nil {
 		return nil
 	}
@@ -101,7 +101,7 @@ func (u *UploadService) Save() error {
 	return nil
 }
 
-func (u *UploadService) StoreInterval() error {
+func (u *MetricUploader) StoreInterval() error {
 	if u.cfg.StoreInterval == 0 {
 		return nil
 	}
@@ -119,7 +119,7 @@ func (u *UploadService) StoreInterval() error {
 	return nil //TODO: fix this
 }
 
-func (u *UploadService) cleanFile() error {
+func (u *MetricUploader) cleanFile() error {
 	_, err := u.file.Seek(0, io.SeekStart)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (u *UploadService) cleanFile() error {
 	return err
 }
 
-func NewUploadService(cfg *config.Config, storage storage.IStorage, logger logger.ILogger) (*UploadService, error) {
+func New(cfg *config.Config, storage storage.Storage, logger logger.ILogger) (*MetricUploader, error) {
 	var file *os.File
 
 	if cfg.FileStoragePath != "" {
@@ -142,5 +142,5 @@ func NewUploadService(cfg *config.Config, storage storage.IStorage, logger logge
 		file = f
 	}
 
-	return &UploadService{cfg, storage, file, logger}, nil
+	return &MetricUploader{cfg, storage, file, logger}, nil
 }

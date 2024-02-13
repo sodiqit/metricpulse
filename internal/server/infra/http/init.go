@@ -7,13 +7,10 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
-	"github.com/sodiqit/metricpulse.git/internal/server/services"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
+	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
-
-func storeMetricsInterval(uploadService services.IUploadService, cfg *config.Config) {
-
-}
 
 func RunServer(config *config.Config) error {
 	logger, err := logger.Initialize(config.LogLevel)
@@ -25,7 +22,7 @@ func RunServer(config *config.Config) error {
 	defer logger.Sync()
 
 	storage := storage.NewMemStorage()
-	uploadService, err := services.NewUploadService(config, storage, logger)
+	uploadService, err := metricuploader.New(config, storage, logger)
 
 	if err != nil {
 		return err
@@ -33,7 +30,7 @@ func RunServer(config *config.Config) error {
 
 	defer uploadService.Close()
 
-	metricService := services.NewMetricService(storage)
+	metricService := metricprocessor.New(storage)
 	metricAdapter := metric.New(metricService, logger, uploadService, config)
 
 	r := chi.NewRouter()

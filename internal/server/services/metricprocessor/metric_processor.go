@@ -1,4 +1,4 @@
-package services
+package metricprocessor
 
 import (
 	"errors"
@@ -9,14 +9,14 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
-type IMetricService interface {
+type MetricService interface {
 	SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error)
 	GetMetric(metricType string, metricName string) (MetricValue, error)
 	GetAllMetrics() (entities.TotalMetrics, error)
 }
 
-type MetricService struct {
-	storage storage.IStorage
+type MetricProcessor struct {
+	storage storage.Storage
 }
 
 type MetricValue struct {
@@ -24,7 +24,7 @@ type MetricValue struct {
 	Counter int64
 }
 
-func (s *MetricService) SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error) {
+func (s *MetricProcessor) SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error) {
 	switch metricType {
 	case constants.MetricTypeGauge:
 		val, err := s.storage.SaveGaugeMetric(metricName, metricValue.Gauge)
@@ -47,7 +47,7 @@ func (s *MetricService) SaveMetric(metricType string, metricName string, metricV
 	return MetricValue{}, fmt.Errorf("unsupported metricType: %s", metricType)
 }
 
-func (s *MetricService) GetMetric(metricType string, metricName string) (MetricValue, error) {
+func (s *MetricProcessor) GetMetric(metricType string, metricName string) (MetricValue, error) {
 	switch metricType {
 	case constants.MetricTypeGauge:
 		val, err := s.storage.GetGaugeMetric(metricName)
@@ -60,10 +60,10 @@ func (s *MetricService) GetMetric(metricType string, metricName string) (MetricV
 	return MetricValue{}, errors.New("not correct metric type")
 }
 
-func (s *MetricService) GetAllMetrics() (entities.TotalMetrics, error) {
+func (s *MetricProcessor) GetAllMetrics() (entities.TotalMetrics, error) {
 	return s.storage.GetAllMetrics()
 }
 
-func NewMetricService(storage storage.IStorage) *MetricService {
-	return &MetricService{storage}
+func New(storage storage.Storage) *MetricProcessor {
+	return &MetricProcessor{storage}
 }
