@@ -5,17 +5,18 @@ import (
 	"fmt"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
+	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
 type IMetricService interface {
 	SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error)
 	GetMetric(metricType string, metricName string) (MetricValue, error)
-	GetAllMetrics() *storage.MemStorage
+	GetAllMetrics() (entities.TotalMetrics, error)
 }
 
 type MetricService struct {
-	Storage *storage.MemStorage
+	storage storage.IStorage
 }
 
 type MetricValue struct {
@@ -26,9 +27,21 @@ type MetricValue struct {
 func (s *MetricService) SaveMetric(metricType string, metricName string, metricValue MetricValue) (MetricValue, error) {
 	switch metricType {
 	case constants.MetricTypeGauge:
-		return MetricValue{Gauge: s.Storage.SaveGaugeMetric(metricName, metricValue.Gauge)}, nil
+		val, err := s.storage.SaveGaugeMetric(metricName, metricValue.Gauge)
+
+		if err != nil {
+			return MetricValue{}, err
+		}
+
+		return MetricValue{Gauge: val}, nil
 	case constants.MetricTypeCounter:
-		return MetricValue{Counter: s.Storage.SaveCounterMetric(metricName, metricValue.Counter)}, nil
+		val, err := s.storage.SaveCounterMetric(metricName, metricValue.Counter)
+
+		if err != nil {
+			return MetricValue{}, err
+		}
+
+		return MetricValue{Counter: val}, nil
 	}
 
 	return MetricValue{}, fmt.Errorf("unsupported metricType: %s", metricType)
@@ -37,20 +50,20 @@ func (s *MetricService) SaveMetric(metricType string, metricName string, metricV
 func (s *MetricService) GetMetric(metricType string, metricName string) (MetricValue, error) {
 	switch metricType {
 	case constants.MetricTypeGauge:
-		val, err := s.Storage.GetGaugeMetric(metricName)
+		val, err := s.storage.GetGaugeMetric(metricName)
 		return MetricValue{Gauge: val}, err
 	case constants.MetricTypeCounter:
-		val, err := s.Storage.GetCounterMetric(metricName)
+		val, err := s.storage.GetCounterMetric(metricName)
 		return MetricValue{Counter: val}, err
 	}
 
 	return MetricValue{}, errors.New("not correct metric type")
 }
 
-func (s *MetricService) GetAllMetrics() *storage.MemStorage {
-	return s.Storage
+func (s *MetricService) GetAllMetrics() (entities.TotalMetrics, error) {
+	return s.storage.GetAllMetrics()
 }
 
-func NewMetricService(storage *storage.MemStorage) MetricService {
-	return MetricService{Storage: storage}
+func NewMetricService(storage storage.IStorage) *MetricService {
+	return &MetricService{storage}
 }

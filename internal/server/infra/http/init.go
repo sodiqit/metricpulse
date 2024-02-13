@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
@@ -13,14 +12,7 @@ import (
 )
 
 func storeMetricsInterval(uploadService services.IUploadService, cfg *config.Config) {
-	if cfg.StoreInterval == 0 {
-		return
-	}
-	storeDuration := time.Duration(cfg.StoreInterval) * time.Second
-	go func() {
-		time.Sleep(storeDuration)
-		uploadService.Save()
-	}()
+
 }
 
 func RunServer(config *config.Config) error {
@@ -42,12 +34,12 @@ func RunServer(config *config.Config) error {
 	defer uploadService.Close()
 
 	metricService := services.NewMetricService(storage)
-	metricAdapter := metric.New(&metricService, logger, uploadService, config)
+	metricAdapter := metric.New(metricService, logger, uploadService, config)
 
 	r := chi.NewRouter()
 	r.Mount("/", metricAdapter.Route())
 
-	storeMetricsInterval(uploadService, config)
+	uploadService.StoreInterval()
 	loadErr := uploadService.Load()
 
 	if loadErr != nil {

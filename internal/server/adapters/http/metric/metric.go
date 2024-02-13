@@ -188,7 +188,12 @@ func (a *Adapter) handleGetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := a.metricService.GetAllMetrics()
+	metrics, err := a.metricService.GetAllMetrics()
+
+	if err != nil {
+		http.Error(w, "Cannot find metrics", http.StatusInternalServerError)
+		return
+	}
 
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString("<html><head><title>Metrics</title></head><body>")

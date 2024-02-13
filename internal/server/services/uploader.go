@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"time"
 
+	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
@@ -13,12 +15,13 @@ import (
 type IUploadService interface {
 	Save() error
 	Load() error
+	StoreInterval() error
 	Close() error
 }
 
 type UploadService struct {
 	cfg     *config.Config
-	storage *storage.MemStorage
+	storage storage.IStorage
 	file    *os.File
 	logger  logger.ILogger
 }
@@ -45,18 +48,21 @@ func (u *UploadService) Load() error {
 		return nil
 	}
 
-	var storage storage.MemStorage
+	var metrics entities.TotalMetrics
 
-	jsonErr := json.Unmarshal(data, &storage)
+	jsonErr := json.Unmarshal(data, &metrics)
 
 	if jsonErr != nil {
 		return jsonErr
 	}
 
-	u.storage.Counter = storage.Counter
-	u.storage.Gauge = storage.Gauge
+	initMetricsErr := u.storage.InitMetrics(metrics)
 
-	u.logger.Infow("success load metrics", "metrics", u.storage, "filePath", u.cfg.FileStoragePath)
+	if initMetricsErr != nil {
+		return initMetricsErr
+	}
+
+	u.logger.Infow("success load metrics", "metrics", metrics, "filePath", u.cfg.FileStoragePath)
 
 	return nil
 }
@@ -66,7 +72,13 @@ func (u *UploadService) Save() error {
 		return nil
 	}
 
-	res, err := json.Marshal(u.storage)
+	metrics, err := u.storage.GetAllMetrics()
+
+	if err != nil {
+		return err
+	}
+
+	res, err := json.Marshal(metrics)
 
 	if err != nil {
 		return err
@@ -89,6 +101,24 @@ func (u *UploadService) Save() error {
 	return nil
 }
 
+func (u *UploadService) StoreInterval() error {
+	if u.cfg.StoreInterval == 0 {
+		return nil
+	}
+	storeDuration := time.Duration(u.cfg.StoreInterval) * time.Second
+	go func() {
+		for {
+			time.Sleep(storeDuration)
+			err := u.Save()
+
+			if err != nil {
+				u.logger.Errorw("error while saving", "error", err)
+			}
+		}
+	}()
+	return nil //TODO: fix this
+}
+
 func (u *UploadService) cleanFile() error {
 	_, err := u.file.Seek(0, io.SeekStart)
 	if err != nil {
@@ -99,7 +129,7 @@ func (u *UploadService) cleanFile() error {
 	return err
 }
 
-func NewUploadService(cfg *config.Config, storage *storage.MemStorage, logger logger.ILogger) (*UploadService, error) {
+func NewUploadService(cfg *config.Config, storage storage.IStorage, logger logger.ILogger) (*UploadService, error) {
 	var file *os.File
 
 	if cfg.FileStoragePath != "" {

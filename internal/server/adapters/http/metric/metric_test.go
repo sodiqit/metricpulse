@@ -9,11 +9,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-resty/resty/v2"
+	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/services"
-	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -33,9 +33,9 @@ func (m *MetricServiceMock) GetMetric(metricType, metricKind string) (services.M
 	return args.Get(0).(services.MetricValue), args.Error(1)
 }
 
-func (m *MetricServiceMock) GetAllMetrics() *storage.MemStorage {
+func (m *MetricServiceMock) GetAllMetrics() (entities.TotalMetrics, error) {
 	args := m.Called()
-	return args.Get(0).(*storage.MemStorage)
+	return args.Get(0).(entities.TotalMetrics), args.Error(1)
 }
 
 type UploadServiceMock struct {
@@ -53,6 +53,11 @@ func (u *UploadServiceMock) Load() error {
 }
 
 func (u *UploadServiceMock) Close() error {
+	args := u.Called()
+	return args.Error(0)
+}
+
+func (u *UploadServiceMock) StoreInterval() error {
 	args := u.Called()
 	return args.Error(0)
 }
@@ -562,7 +567,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/",
 			setupMock: func() {
-				metricServiceMock.On("GetAllMetrics").Once().Return(&storage.MemStorage{})
+				metricServiceMock.On("GetAllMetrics").Once().Return(entities.TotalMetrics{}, nil)
 			},
 			expectedContentType: "text/html",
 			expectedStatus:      http.StatusOK,
