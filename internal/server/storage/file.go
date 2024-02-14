@@ -96,12 +96,12 @@ func (s *FileStorage) Close(ctx context.Context) error {
 	return err
 }
 
-func (u *FileStorage) load() error {
-	if u.file == nil || !u.cfg.Restore {
+func (s *FileStorage) load() error {
+	if s.file == nil || !s.cfg.Restore {
 		return nil
 	}
 
-	data, err := io.ReadAll(u.file)
+	data, err := io.ReadAll(s.file)
 
 	if err != nil {
 		return err
@@ -119,23 +119,23 @@ func (u *FileStorage) load() error {
 		return jsonErr
 	}
 
-	initMetricsErr := u.storage.InitMetrics(metrics)
+	initMetricsErr := s.storage.InitMetrics(metrics)
 
 	if initMetricsErr != nil {
 		return initMetricsErr
 	}
 
-	u.logger.Infow("success load metrics", "metrics", metrics, "filePath", u.cfg.FileStoragePath)
+	s.logger.Infow("success load metrics", "metrics", metrics, "filePath", s.cfg.FileStoragePath)
 
 	return nil
 }
 
-func (u *FileStorage) save() error {
-	if u.file == nil {
+func (s *FileStorage) save() error {
+	if s.file == nil {
 		return errors.New("file not found")
 	}
 
-	metrics, err := u.storage.GetAllMetrics()
+	metrics, err := s.storage.GetAllMetrics()
 
 	if err != nil {
 		return err
@@ -147,48 +147,48 @@ func (u *FileStorage) save() error {
 		return err
 	}
 
-	cleanErr := u.cleanFile()
+	cleanErr := s.cleanFile()
 
 	if cleanErr != nil {
 		return cleanErr
 	}
 
-	_, writeErr := u.file.Write(res)
+	_, writeErr := s.file.Write(res)
 
 	if writeErr != nil {
 		return writeErr
 	}
 
-	u.logger.Infow("success save in file", "metrics", string(res), "filePath", u.cfg.FileStoragePath)
+	s.logger.Infow("success save in file", "metrics", string(res), "filePath", s.cfg.FileStoragePath)
 
 	return nil
 }
 
-func (u *FileStorage) storeInterval() error {
-	if u.cfg.StoreInterval == 0 {
+func (s *FileStorage) storeInterval() error {
+	if s.cfg.StoreInterval == 0 {
 		return nil
 	}
-	storeDuration := time.Duration(u.cfg.StoreInterval) * time.Second
+	storeDuration := time.Duration(s.cfg.StoreInterval) * time.Second
 	go func() {
 		for {
 			time.Sleep(storeDuration)
-			err := u.save()
+			err := s.save()
 
 			if err != nil {
-				u.logger.Errorw("error while saving", "error", err)
+				s.logger.Errorw("error while saving", "error", err)
 			}
 		}
 	}()
 	return nil //TODO: fix this
 }
 
-func (u *FileStorage) cleanFile() error {
-	_, err := u.file.Seek(0, io.SeekStart)
+func (s *FileStorage) cleanFile() error {
+	_, err := s.file.Seek(0, io.SeekStart)
 	if err != nil {
 		return err
 	}
 
-	err = u.file.Truncate(0)
+	err = s.file.Truncate(0)
 	return err
 }
 

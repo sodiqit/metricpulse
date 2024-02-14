@@ -44,7 +44,7 @@ func (s *PostgresStorage) Init(ctx context.Context) error {
 }
 
 func (s *PostgresStorage) Ping(ctx context.Context) error {
-	if s.conn != nil {
+	if s.conn == nil {
 		return ErrNotConnection
 	}
 
@@ -52,7 +52,7 @@ func (s *PostgresStorage) Ping(ctx context.Context) error {
 }
 
 func (s *PostgresStorage) Close(ctx context.Context) error {
-	if s.conn != nil {
+	if s.conn == nil {
 		return ErrNotConnection
 	}
 

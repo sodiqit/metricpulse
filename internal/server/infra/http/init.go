@@ -29,7 +29,7 @@ func RunServer(config *config.Config) error {
 	err = storage.Init(ctx)
 
 	if err != nil {
-		logger.Errorw("error while init storage", "error", err)
+		return err
 	}
 
 	metricService := metricprocessor.New(storage, config)
