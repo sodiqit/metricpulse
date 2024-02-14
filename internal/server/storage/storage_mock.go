@@ -55,48 +55,48 @@ func (mr *MockStorageMockRecorder) Close(arg0 any) *gomock.Call {
 }
 
 // GetAllMetrics mocks base method.
-func (m *MockStorage) GetAllMetrics() (entities.TotalMetrics, error) {
+func (m *MockStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllMetrics")
+	ret := m.ctrl.Call(m, "GetAllMetrics", ctx)
 	ret0, _ := ret[0].(entities.TotalMetrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAllMetrics indicates an expected call of GetAllMetrics.
-func (mr *MockStorageMockRecorder) GetAllMetrics() *gomock.Call {
+func (mr *MockStorageMockRecorder) GetAllMetrics(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllMetrics", reflect.TypeOf((*MockStorage)(nil).GetAllMetrics))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllMetrics", reflect.TypeOf((*MockStorage)(nil).GetAllMetrics), ctx)
 }
 
 // GetCounterMetric mocks base method.
-func (m *MockStorage) GetCounterMetric(metricType string) (int64, error) {
+func (m *MockStorage) GetCounterMetric(ctx context.Context, metricType string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCounterMetric", metricType)
+	ret := m.ctrl.Call(m, "GetCounterMetric", ctx, metricType)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCounterMetric indicates an expected call of GetCounterMetric.
-func (mr *MockStorageMockRecorder) GetCounterMetric(metricType any) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetCounterMetric(ctx, metricType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterMetric", reflect.TypeOf((*MockStorage)(nil).GetCounterMetric), metricType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterMetric", reflect.TypeOf((*MockStorage)(nil).GetCounterMetric), ctx, metricType)
 }
 
 // GetGaugeMetric mocks base method.
-func (m *MockStorage) GetGaugeMetric(metricType string) (float64, error) {
+func (m *MockStorage) GetGaugeMetric(ctx context.Context, metricType string) (float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGaugeMetric", metricType)
+	ret := m.ctrl.Call(m, "GetGaugeMetric", ctx, metricType)
 	ret0, _ := ret[0].(float64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetGaugeMetric indicates an expected call of GetGaugeMetric.
-func (mr *MockStorageMockRecorder) GetGaugeMetric(metricType any) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetGaugeMetric(ctx, metricType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGaugeMetric", reflect.TypeOf((*MockStorage)(nil).GetGaugeMetric), metricType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGaugeMetric", reflect.TypeOf((*MockStorage)(nil).GetGaugeMetric), ctx, metricType)
 }
 
 // Init mocks base method.
@@ -128,31 +128,31 @@ func (mr *MockStorageMockRecorder) Ping(arg0 any) *gomock.Call {
 }
 
 // SaveCounterMetric mocks base method.
-func (m *MockStorage) SaveCounterMetric(metricType string, value int64) (int64, error) {
+func (m *MockStorage) SaveCounterMetric(ctx context.Context, metricType string, value int64) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveCounterMetric", metricType, value)
+	ret := m.ctrl.Call(m, "SaveCounterMetric", ctx, metricType, value)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SaveCounterMetric indicates an expected call of SaveCounterMetric.
-func (mr *MockStorageMockRecorder) SaveCounterMetric(metricType, value any) *gomock.Call {
+func (mr *MockStorageMockRecorder) SaveCounterMetric(ctx, metricType, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveCounterMetric", reflect.TypeOf((*MockStorage)(nil).SaveCounterMetric), metricType, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveCounterMetric", reflect.TypeOf((*MockStorage)(nil).SaveCounterMetric), ctx, metricType, value)
 }
 
 // SaveGaugeMetric mocks base method.
-func (m *MockStorage) SaveGaugeMetric(metricType string, value float64) (float64, error) {
+func (m *MockStorage) SaveGaugeMetric(ctx context.Context, metricType string, value float64) (float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveGaugeMetric", metricType, value)
+	ret := m.ctrl.Call(m, "SaveGaugeMetric", ctx, metricType, value)
 	ret0, _ := ret[0].(float64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SaveGaugeMetric indicates an expected call of SaveGaugeMetric.
-func (mr *MockStorageMockRecorder) SaveGaugeMetric(metricType, value any) *gomock.Call {
+func (mr *MockStorageMockRecorder) SaveGaugeMetric(ctx, metricType, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGaugeMetric", reflect.TypeOf((*MockStorage)(nil).SaveGaugeMetric), metricType, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGaugeMetric", reflect.TypeOf((*MockStorage)(nil).SaveGaugeMetric), ctx, metricType, value)
 }

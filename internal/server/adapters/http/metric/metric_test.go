@@ -112,7 +112,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.expectedStatus == http.StatusOK {
-				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(tc.returnValue, nil)
+				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(tc.returnValue, nil)
 			}
 
 			req := client.R().SetBody(tc.body)
@@ -181,7 +181,7 @@ func TestGetMetricHandler(t *testing.T) {
 			method: http.MethodPost,
 			url:    "/value/",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
 			},
 			contentType:    "application/json",
 			body:           `{"id": "temp", "type": "gauge"}`,
@@ -194,7 +194,7 @@ func TestGetMetricHandler(t *testing.T) {
 			url:         "/value/",
 			contentType: "application/json",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
 			},
 			body:           `{"id": "temp", "type": "counter"}`,
 			expectedResult: `{"id": "temp", "type": "counter", "delta": 100}`,
@@ -207,7 +207,7 @@ func TestGetMetricHandler(t *testing.T) {
 			body:        `{"id": "temp", "type": "gauge"}`,
 			contentType: "application/json",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -312,7 +312,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.expectedStatus == http.StatusOK {
-				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{}, nil)
+				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{}, nil)
 			}
 
 			req := client.R()
@@ -364,7 +364,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/value/gauge/temp",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
 			},
 			expectedResult: "100.156",
 			expectedStatus: http.StatusOK,
@@ -374,7 +374,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/value/counter/temp",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
 			},
 			expectedResult: "100",
 			expectedStatus: http.StatusOK,
@@ -384,7 +384,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/value/gauge/temp",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -461,7 +461,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetAllMetrics().Times(1).Return(entities.TotalMetrics{}, nil)
+				metricServiceMock.EXPECT().GetAllMetrics(gomock.Any()).Times(1).Return(entities.TotalMetrics{}, nil)
 			},
 			expectedContentType: "text/html",
 			expectedStatus:      http.StatusOK,

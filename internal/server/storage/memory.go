@@ -12,12 +12,12 @@ type MemStorage struct {
 	counter map[string]int64
 }
 
-func (m *MemStorage) SaveGaugeMetric(metricType string, value float64) (float64, error) {
+func (m *MemStorage) SaveGaugeMetric(ctx context.Context, metricType string, value float64) (float64, error) {
 	m.gauge[metricType] = value
 	return value, nil
 }
 
-func (m *MemStorage) SaveCounterMetric(metricType string, value int64) (int64, error) {
+func (m *MemStorage) SaveCounterMetric(ctx context.Context, metricType string, value int64) (int64, error) {
 	val, ok := m.counter[metricType]
 
 	if ok {
@@ -29,7 +29,7 @@ func (m *MemStorage) SaveCounterMetric(metricType string, value int64) (int64, e
 	return m.counter[metricType], nil
 }
 
-func (m *MemStorage) GetGaugeMetric(metricName string) (float64, error) {
+func (m *MemStorage) GetGaugeMetric(ctx context.Context, metricName string) (float64, error) {
 	val, ok := m.gauge[metricName]
 
 	if ok {
@@ -39,7 +39,7 @@ func (m *MemStorage) GetGaugeMetric(metricName string) (float64, error) {
 	}
 }
 
-func (m *MemStorage) GetCounterMetric(metricName string) (int64, error) {
+func (m *MemStorage) GetCounterMetric(ctx context.Context, metricName string) (int64, error) {
 	val, ok := m.counter[metricName]
 
 	if ok {
@@ -49,7 +49,7 @@ func (m *MemStorage) GetCounterMetric(metricName string) (int64, error) {
 	}
 }
 
-func (m *MemStorage) GetAllMetrics() (entities.TotalMetrics, error) {
+func (m *MemStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error) {
 	return entities.TotalMetrics{Gauge: m.gauge, Counter: m.counter}, nil
 }
 

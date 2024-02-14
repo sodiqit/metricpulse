@@ -10,6 +10,7 @@
 package metricprocessor
 
 import (
+	context "context"
 	reflect "reflect"
 
 	entities "github.com/sodiqit/metricpulse.git/internal/entities"
@@ -40,46 +41,46 @@ func (m *MockMetricService) EXPECT() *MockMetricServiceMockRecorder {
 }
 
 // GetAllMetrics mocks base method.
-func (m *MockMetricService) GetAllMetrics() (entities.TotalMetrics, error) {
+func (m *MockMetricService) GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllMetrics")
+	ret := m.ctrl.Call(m, "GetAllMetrics", ctx)
 	ret0, _ := ret[0].(entities.TotalMetrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAllMetrics indicates an expected call of GetAllMetrics.
-func (mr *MockMetricServiceMockRecorder) GetAllMetrics() *gomock.Call {
+func (mr *MockMetricServiceMockRecorder) GetAllMetrics(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllMetrics", reflect.TypeOf((*MockMetricService)(nil).GetAllMetrics))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllMetrics", reflect.TypeOf((*MockMetricService)(nil).GetAllMetrics), ctx)
 }
 
 // GetMetric mocks base method.
-func (m *MockMetricService) GetMetric(metricType, metricName string) (MetricValue, error) {
+func (m *MockMetricService) GetMetric(ctx context.Context, metricType, metricName string) (MetricValue, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetric", metricType, metricName)
+	ret := m.ctrl.Call(m, "GetMetric", ctx, metricType, metricName)
 	ret0, _ := ret[0].(MetricValue)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMetric indicates an expected call of GetMetric.
-func (mr *MockMetricServiceMockRecorder) GetMetric(metricType, metricName any) *gomock.Call {
+func (mr *MockMetricServiceMockRecorder) GetMetric(ctx, metricType, metricName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetric", reflect.TypeOf((*MockMetricService)(nil).GetMetric), metricType, metricName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetric", reflect.TypeOf((*MockMetricService)(nil).GetMetric), ctx, metricType, metricName)
 }
 
 // SaveMetric mocks base method.
-func (m *MockMetricService) SaveMetric(metricType, metricName string, metricValue MetricValue) (MetricValue, error) {
+func (m *MockMetricService) SaveMetric(ctx context.Context, metricType, metricName string, metricValue MetricValue) (MetricValue, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveMetric", metricType, metricName, metricValue)
+	ret := m.ctrl.Call(m, "SaveMetric", ctx, metricType, metricName, metricValue)
 	ret0, _ := ret[0].(MetricValue)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SaveMetric indicates an expected call of SaveMetric.
-func (mr *MockMetricServiceMockRecorder) SaveMetric(metricType, metricName, metricValue any) *gomock.Call {
+func (mr *MockMetricServiceMockRecorder) SaveMetric(ctx, metricType, metricName, metricValue any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveMetric", reflect.TypeOf((*MockMetricService)(nil).SaveMetric), metricType, metricName, metricValue)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveMetric", reflect.TypeOf((*MockMetricService)(nil).SaveMetric), ctx, metricType, metricName, metricValue)
 }

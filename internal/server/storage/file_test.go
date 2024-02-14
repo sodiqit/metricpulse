@@ -66,7 +66,7 @@ func TestFileStorage_SaveInFile(t *testing.T) {
 				err = fileStorage.Init(ctx)
 				require.NoError(t, err)
 
-				_, err = fileStorage.SaveCounterMetric("test", 1)
+				_, err = fileStorage.SaveCounterMetric(ctx, "test", 1)
 				require.NoError(t, err)
 
 				res := readFile(t, file)
@@ -90,7 +90,7 @@ func TestFileStorage_SaveInFile(t *testing.T) {
 				err = fileStorage.Init(ctx)
 				require.NoError(t, err)
 
-				_, err = fileStorage.SaveCounterMetric("test", 1)
+				_, err = fileStorage.SaveCounterMetric(ctx, "test", 1)
 				require.NoError(t, err)
 
 				//read file before async update
@@ -129,7 +129,7 @@ func TestFileStorage_SaveInFile(t *testing.T) {
 				err = fileStorage.Init(ctx)
 				require.NoError(t, err)
 
-				_, err = fileStorage.SaveCounterMetric("test", 1)
+				_, err = fileStorage.SaveCounterMetric(ctx, "test", 1)
 				require.NoError(t, err)
 
 				res := readFile(t, file)
@@ -178,10 +178,10 @@ func TestFileStorage_LoadFromFile(t *testing.T) {
 
 				store1 := storage.NewMemStorage()
 
-				expectedMetrics, err := store1.GetAllMetrics()
+				expectedMetrics, err := store1.GetAllMetrics(ctx)
 				require.NoError(t, err)
 
-				resultMetrics, err := store.GetAllMetrics()
+				resultMetrics, err := store.GetAllMetrics(ctx)
 				require.NoError(t, err)
 
 				assert.Equal(t, expectedMetrics, resultMetrics)
@@ -214,7 +214,7 @@ func TestFileStorage_LoadFromFile(t *testing.T) {
 					"test": 1,
 				}}
 
-				resultMetrics, err := fileStorage.GetAllMetrics()
+				resultMetrics, err := fileStorage.GetAllMetrics(ctx)
 				require.NoError(t, err)
 
 				assert.Equal(t, expectedMetrics, resultMetrics)

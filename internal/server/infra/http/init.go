@@ -46,7 +46,7 @@ func setupStorage(cfg *config.Config, logger logger.ILogger) storage.Storage {
 	memoryStorage := storage.NewMemStorage()
 
 	if cfg.DatabaseDSN != "" {
-		return storage.NewPostgresStorage(cfg)
+		return storage.NewPostgresStorage(cfg, logger)
 	}
 
 	if cfg.FileStoragePath != "" {

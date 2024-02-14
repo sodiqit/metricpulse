@@ -1,6 +1,7 @@
 package metricprocessor_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -17,6 +18,8 @@ func TestMetricProcessor_SaveMetric(t *testing.T) {
 	defer ctrl.Finish()
 
 	storage := storage.NewMockStorage(ctrl)
+
+	ctx := context.Background()
 
 	tests := []struct {
 		name        string
@@ -42,8 +45,8 @@ func TestMetricProcessor_SaveMetric(t *testing.T) {
 			name:   "invalid gauge metric save",
 			config: &config.Config{},
 			setupMock: func() {
-				storage.EXPECT().SaveGaugeMetric("temp", gomock.Any()).Times(1).Return(float64(0), errors.New("error"))
-				storage.EXPECT().SaveCounterMetric(gomock.Any(), gomock.Any()).Times(0)
+				storage.EXPECT().SaveGaugeMetric(gomock.Any(), "temp", gomock.Any()).Times(1).Return(float64(0), errors.New("error"))
+				storage.EXPECT().SaveCounterMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			err:         errors.New("error"),
 			metricType:  constants.MetricTypeGauge,
@@ -55,8 +58,8 @@ func TestMetricProcessor_SaveMetric(t *testing.T) {
 			name:   "invalid counter metric save",
 			config: &config.Config{},
 			setupMock: func() {
-				storage.EXPECT().SaveGaugeMetric(gomock.Any(), gomock.Any()).Times(0)
-				storage.EXPECT().SaveCounterMetric("temp", gomock.Any()).Times(1).Return(int64(0), errors.New("error"))
+				storage.EXPECT().SaveGaugeMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+				storage.EXPECT().SaveCounterMetric(gomock.Any(), "temp", gomock.Any()).Times(1).Return(int64(0), errors.New("error"))
 			},
 			err:         errors.New("error"),
 			metricType:  constants.MetricTypeCounter,
@@ -68,8 +71,8 @@ func TestMetricProcessor_SaveMetric(t *testing.T) {
 			name:   "success gauge metric save",
 			config: &config.Config{StoreInterval: 10},
 			setupMock: func() {
-				storage.EXPECT().SaveGaugeMetric("temp", gomock.Any()).Times(1).Return(float64(10.5), nil)
-				storage.EXPECT().SaveCounterMetric(gomock.Any(), gomock.Any()).Times(0)
+				storage.EXPECT().SaveGaugeMetric(gomock.Any(), "temp", gomock.Any()).Times(1).Return(float64(10.5), nil)
+				storage.EXPECT().SaveCounterMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			metricType:  constants.MetricTypeGauge,
 			metricName:  "temp",
@@ -80,8 +83,8 @@ func TestMetricProcessor_SaveMetric(t *testing.T) {
 			name:   "success counter metric save",
 			config: &config.Config{StoreInterval: 10},
 			setupMock: func() {
-				storage.EXPECT().SaveGaugeMetric(gomock.Any(), gomock.Any()).Times(0)
-				storage.EXPECT().SaveCounterMetric("temp", gomock.Any()).Times(1).Return(int64(5), nil)
+				storage.EXPECT().SaveGaugeMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+				storage.EXPECT().SaveCounterMetric(gomock.Any(), "temp", gomock.Any()).Times(1).Return(int64(5), nil)
 			},
 			metricType:  constants.MetricTypeCounter,
 			metricName:  "temp",
@@ -93,7 +96,7 @@ func TestMetricProcessor_SaveMetric(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock()
 			metricService := metricprocessor.New(storage, tt.config)
-			val, err := metricService.SaveMetric(tt.metricType, tt.metricName, tt.metricValue)
+			val, err := metricService.SaveMetric(ctx, tt.metricType, tt.metricName, tt.metricValue)
 
 			if err != nil {
 				require.NotNil(t, err)
@@ -110,6 +113,8 @@ func TestMetricProcessor_GetMetric(t *testing.T) {
 	defer ctrl.Finish()
 
 	storage := storage.NewMockStorage(ctrl)
+
+	ctx := context.Background()
 
 	tests := []struct {
 		name        string
@@ -133,8 +138,8 @@ func TestMetricProcessor_GetMetric(t *testing.T) {
 			name:   "invalid gauge metric save",
 			config: &config.Config{},
 			setupMock: func() {
-				storage.EXPECT().GetGaugeMetric("temp").Times(1).Return(float64(0), errors.New("error"))
-				storage.EXPECT().GetCounterMetric(gomock.Any()).Times(0)
+				storage.EXPECT().GetGaugeMetric(gomock.Any(), "temp").Times(1).Return(float64(0), errors.New("error"))
+				storage.EXPECT().GetCounterMetric(gomock.Any(), gomock.Any()).Times(0)
 			},
 			err:         errors.New("error"),
 			metricType:  constants.MetricTypeGauge,
@@ -145,8 +150,8 @@ func TestMetricProcessor_GetMetric(t *testing.T) {
 			name:   "invalid counter metric save",
 			config: &config.Config{},
 			setupMock: func() {
-				storage.EXPECT().GetGaugeMetric(gomock.Any()).Times(0)
-				storage.EXPECT().GetCounterMetric("temp").Times(1).Return(int64(0), errors.New("error"))
+				storage.EXPECT().GetGaugeMetric(gomock.Any(), gomock.Any()).Times(0)
+				storage.EXPECT().GetCounterMetric(gomock.Any(), "temp").Times(1).Return(int64(0), errors.New("error"))
 			},
 			err:         errors.New("error"),
 			metricType:  constants.MetricTypeCounter,
@@ -157,8 +162,8 @@ func TestMetricProcessor_GetMetric(t *testing.T) {
 			name:   "success get gauge metric",
 			config: &config.Config{},
 			setupMock: func() {
-				storage.EXPECT().GetGaugeMetric("temp").Times(1).Return(float64(10.5), nil)
-				storage.EXPECT().GetCounterMetric(gomock.Any()).Times(0)
+				storage.EXPECT().GetGaugeMetric(gomock.Any(), "temp").Times(1).Return(float64(10.5), nil)
+				storage.EXPECT().GetCounterMetric(gomock.Any(), gomock.Any()).Times(0)
 			},
 			metricType:  constants.MetricTypeGauge,
 			metricName:  "temp",
@@ -168,8 +173,8 @@ func TestMetricProcessor_GetMetric(t *testing.T) {
 			name:   "success get counter metric",
 			config: &config.Config{},
 			setupMock: func() {
-				storage.EXPECT().GetGaugeMetric(gomock.Any()).Times(0)
-				storage.EXPECT().GetCounterMetric("temp").Times(1).Return(int64(5), nil)
+				storage.EXPECT().GetGaugeMetric(gomock.Any(), gomock.Any()).Times(0)
+				storage.EXPECT().GetCounterMetric(gomock.Any(), "temp").Times(1).Return(int64(5), nil)
 			},
 			metricType:  constants.MetricTypeCounter,
 			metricName:  "temp",
@@ -180,7 +185,7 @@ func TestMetricProcessor_GetMetric(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock()
 			metricService := metricprocessor.New(storage, tt.config)
-			val, err := metricService.GetMetric(tt.metricType, tt.metricName)
+			val, err := metricService.GetMetric(ctx, tt.metricType, tt.metricName)
 
 			if err != nil {
 				require.NotNil(t, err)

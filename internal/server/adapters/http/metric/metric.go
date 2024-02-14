@@ -71,7 +71,7 @@ func (a *Adapter) handleTextUpdateMetric(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	a.metricService.SaveMetric(metricType, metricName, val)
+	a.metricService.SaveMetric(r.Context(), metricType, metricName, val)
 
 	w.Write([]byte{})
 }
@@ -87,7 +87,7 @@ func (a *Adapter) handleTextGetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val, err := a.metricService.GetMetric(metricType, metricName)
+	val, err := a.metricService.GetMetric(r.Context(), metricType, metricName)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metricName), http.StatusNotFound)
@@ -130,7 +130,7 @@ func (a *Adapter) handleUpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedValue, err := a.metricService.SaveMetric(metrics.MType, metrics.ID, val)
+	updatedValue, err := a.metricService.SaveMetric(r.Context(), metrics.MType, metrics.ID, val)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -171,7 +171,7 @@ func (a *Adapter) handleGetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val, err := a.metricService.GetMetric(metrics.MType, metrics.ID)
+	val, err := a.metricService.GetMetric(r.Context(), metrics.MType, metrics.ID)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metrics.ID), http.StatusNotFound)
@@ -191,7 +191,7 @@ func (a *Adapter) handleGetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics, err := a.metricService.GetAllMetrics()
+	metrics, err := a.metricService.GetAllMetrics(r.Context())
 
 	if err != nil {
 		http.Error(w, "Cannot find metrics", http.StatusInternalServerError)
