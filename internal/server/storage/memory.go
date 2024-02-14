@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/sodiqit/metricpulse.git/internal/entities"
@@ -55,6 +56,18 @@ func (m *MemStorage) GetAllMetrics() (entities.TotalMetrics, error) {
 func (m *MemStorage) InitMetrics(metrics entities.TotalMetrics) error {
 	m.counter = metrics.Counter
 	m.gauge = metrics.Gauge
+	return nil
+}
+
+func (m *MemStorage) Init(context.Context) error {
+	return nil
+}
+
+func (m *MemStorage) Ping(context.Context) error {
+	return nil
+}
+
+func (m *MemStorage) Close(context.Context) error {
 	return nil
 }
 

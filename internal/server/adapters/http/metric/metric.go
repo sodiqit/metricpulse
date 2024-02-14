@@ -15,11 +15,13 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
+	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
 type Adapter struct {
 	metricService metricprocessor.MetricService
 	logger        logger.ILogger
+	storage       storage.Storage
 }
 
 func (a *Adapter) Route() *chi.Mux {
@@ -34,9 +36,21 @@ func (a *Adapter) Route() *chi.Mux {
 	r.Get("/value/{metricType}/{metricName}", a.handleTextGetMetric)
 	r.Post("/value/", a.handleGetMetric)
 
+	r.Get("/ping", a.handlePing)
 	r.Get("/", a.handleGetAllMetrics)
 
 	return r
+}
+
+func (a *Adapter) handlePing(w http.ResponseWriter, r *http.Request) {
+	err := a.storage.Ping(r.Context())
+
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte{})
 }
 
 func (a *Adapter) handleTextUpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -204,10 +218,11 @@ func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func New(metricService metricprocessor.MetricService, logger logger.ILogger) *Adapter {
+func New(metricService metricprocessor.MetricService, storage storage.Storage, logger logger.ILogger) *Adapter {
 	return &Adapter{
 		metricService,
 		logger,
+		storage,
 	}
 }
 
