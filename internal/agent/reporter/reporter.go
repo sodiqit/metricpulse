@@ -5,8 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sodiqit/metricpulse.git/internal/constants"
@@ -23,12 +21,55 @@ type MetricReporter struct {
 	logger     logger.ILogger
 	serverAddr string
 }
+//FIXME: refactor and use batch
+func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
+	var metricsList []entities.Metrics
 
-type HTTPClient interface {
-	Post(url, contentType string, body io.Reader) (resp *http.Response, err error)
+	for metricName, metricValue := range metrics {
+		metric := entities.Metrics{ID: metricName}
+
+		switch val := metricValue.(type) {
+		case float64:
+			metric.MType = constants.MetricTypeGauge
+			metric.Value = &val
+		case int64:
+			metric.MType = constants.MetricTypeCounter
+			metric.Delta = &val
+		default:
+			r.logger.Errorw("unsupported metric type", "metricName", metricName)
+			continue
+		}
+
+		metricsList = append(metricsList, metric)
+	}
+
+	if len(metricsList) == 0 {
+		return
+	}
+
+	buf, err := wrapBodyInGzip(metricsList)
+	if err != nil {
+		r.logger.Errorw("error while wrapping body in gzip", "error", err.Error())
+		return
+	}
+
+	// Отправка сжатого списка метрик
+	url := fmt.Sprintf("http://%s/updates/", r.serverAddr)
+	resp, err := r.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(buf.Bytes()).
+		Post(url)
+
+	if err != nil {
+		r.logger.Errorw("error while sending metrics batch", "error", err.Error())
+		return
+	}
+
+	r.logger.Infow("success sending metrics batch", "result", resp.String())
 }
 
-func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
+func (r *MetricReporter) SendMetrics1(metrics map[string]interface{}) {
 
 	for metricName, metricValue := range metrics {
 		body := entities.Metrics{ID: metricName}

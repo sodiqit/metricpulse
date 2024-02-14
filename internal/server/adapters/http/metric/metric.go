@@ -37,9 +37,45 @@ func (a *Adapter) Route() *chi.Mux {
 	r.Post("/value/", a.handleGetMetric)
 
 	r.Get("/ping", a.handlePing)
+	r.Post("/updates/", a.handleUpdatesMetric)
 	r.Get("/", a.handleGetAllMetrics)
 
 	return r
+}
+//FIXME: refactor and use batch
+// type parsedMetric struct {
+// 	ID    string
+// 	MType string          
+// 	Value metricprocessor.MetricValue
+// }
+
+func (a *Adapter) handleUpdatesMetric(w http.ResponseWriter, r *http.Request) {
+	var metrics []entities.Metrics
+
+	contentType := r.Header.Get("Content-Type")
+
+	if contentType != "application/json" {
+		http.Error(w, "need provide Content-Type: application/json", http.StatusBadRequest)
+		return
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, metric := range metrics {
+		val, err := parseMetricValue(metric)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		a.metricService.SaveMetric(r.Context(), metric.MType, metric.ID, val)
+	}
+
+	w.Write([]byte(""))
 }
 
 func (a *Adapter) handlePing(w http.ResponseWriter, r *http.Request) {
