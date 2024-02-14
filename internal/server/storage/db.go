@@ -2,11 +2,14 @@ package storage
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 )
+
+var ErrNotConnection = errors.New("not connection. Maybe not invoked Init() method")
 
 type PostgresStorage struct {
 	cfg  *config.Config
@@ -33,11 +36,11 @@ func (s *PostgresStorage) GetAllMetrics() (entities.TotalMetrics, error) {
 	return entities.TotalMetrics{}, nil
 }
 
-func (s *PostgresStorage) InitMetrics(metrics entities.TotalMetrics) error {
-	return nil
-}
-
 func (s *PostgresStorage) Init(ctx context.Context) error {
+	if s.conn != nil {
+		return ErrNotConnection
+	}
+
 	conn, err := pgx.Connect(ctx, s.cfg.DatabaseDSN)
 	s.conn = conn
 
@@ -45,10 +48,18 @@ func (s *PostgresStorage) Init(ctx context.Context) error {
 }
 
 func (s *PostgresStorage) Ping(ctx context.Context) error {
+	if s.conn != nil {
+		return ErrNotConnection
+	}
+
 	return s.conn.Ping(ctx)
 }
 
 func (s *PostgresStorage) Close(ctx context.Context) error {
+	if s.conn != nil {
+		return ErrNotConnection
+	}
+
 	return s.conn.Close(ctx)
 }
 
