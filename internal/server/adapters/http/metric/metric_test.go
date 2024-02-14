@@ -14,6 +14,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
+	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -26,13 +27,14 @@ func TestUpdateMetricHandler(t *testing.T) {
 	r := chi.NewRouter()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -139,6 +141,7 @@ func TestGetMetricHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	storageMock := storage.NewMockStorage(ctrl)
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
 	logger, err := logger.Initialize("info")
 
@@ -146,7 +149,7 @@ func TestGetMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -258,13 +261,14 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -331,13 +335,14 @@ func TestTextGetMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -427,13 +432,14 @@ func TestGetAllMetricsHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger)
 
 	r.Mount("/", c.Route())
 
@@ -486,6 +492,81 @@ func TestGetAllMetricsHandler(t *testing.T) {
 			if tc.expectedStatus == http.StatusOK {
 				assert.Equal(t, tc.expectedContentType, resp.Header().Get("Content-Type"))
 			}
+		})
+	}
+}
+
+func TestPingHandler(t *testing.T) {
+	r := chi.NewRouter()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := metric.New(metricServiceMock, storageMock, logger)
+
+	r.Mount("/", c.Route())
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	client := resty.New().SetBaseURL(ts.URL)
+
+	tests := []struct {
+		name                string
+		method              string
+		url                 string
+		setupMock           func()
+		expectedContentType string
+		expectedStatus      int
+	}{
+		{
+			name:   "valid storage connection",
+			method: http.MethodGet,
+			url:    "/ping",
+			setupMock: func() {
+				storageMock.EXPECT().Ping(gomock.Any()).Times(1).Return(nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:   "invalid storage connection",
+			method: http.MethodGet,
+			url:    "/ping",
+			setupMock: func() {
+				storageMock.EXPECT().Ping(gomock.Any()).Times(1).Return(errors.New("ping error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "Invalid method",
+			method:         http.MethodPost,
+			url:            "/ping",
+			setupMock:      func() {},
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setupMock()
+
+			req := client.R()
+
+			req.Method = tc.method
+			req.URL = tc.url
+
+			resp, err := req.Send()
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
 		})
 	}
 }

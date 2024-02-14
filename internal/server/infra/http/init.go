@@ -33,7 +33,7 @@ func RunServer(config *config.Config) error {
 	}
 
 	metricService := metricprocessor.New(storage, config)
-	metricAdapter := metric.New(metricService, logger)
+	metricAdapter := metric.New(metricService, storage, logger)
 
 	r := chi.NewRouter()
 	r.Mount("/", metricAdapter.Route())
