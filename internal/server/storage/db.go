@@ -37,10 +37,6 @@ func (s *PostgresStorage) GetAllMetrics() (entities.TotalMetrics, error) {
 }
 
 func (s *PostgresStorage) Init(ctx context.Context) error {
-	if s.conn != nil {
-		return ErrNotConnection
-	}
-
 	conn, err := pgx.Connect(ctx, s.cfg.DatabaseDSN)
 	s.conn = conn
 
