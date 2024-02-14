@@ -1,6 +1,10 @@
 package storage
 
-import "github.com/sodiqit/metricpulse.git/internal/entities"
+import (
+	"context"
+
+	"github.com/sodiqit/metricpulse.git/internal/entities"
+)
 
 type Storage interface {
 	SaveGaugeMetric(metricType string, value float64) (float64, error)
@@ -8,5 +12,7 @@ type Storage interface {
 	GetCounterMetric(metricType string) (int64, error)
 	GetGaugeMetric(metricType string) (float64, error)
 	GetAllMetrics() (entities.TotalMetrics, error)
-	InitMetrics(metrics entities.TotalMetrics) error
+	Init(context.Context) error
+	Ping(context.Context) error
+	Close(context.Context) error
 }

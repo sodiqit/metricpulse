@@ -14,6 +14,7 @@ type Config struct {
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 func ParseConfig() *Config {
@@ -23,6 +24,7 @@ func ParseConfig() *Config {
 	flag.IntVar(&config.StoreInterval, "i", 300, "store interval in seconds")
 	flag.StringVar(&config.FileStoragePath, "f", "/tmp/metrics-db.json", "file path for store metrics: provide empty if want disable file storage")
 	flag.BoolVar(&config.Restore, "r", true, "load saved metrics on bootstrap server")
+	flag.StringVar(&config.DatabaseDSN, "d", "", "database connection string")
 	flag.Parse()
 
 	if err := env.Parse(&config); err != nil {

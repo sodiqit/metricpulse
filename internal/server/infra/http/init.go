@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -8,7 +9,6 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
-	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
@@ -21,28 +21,37 @@ func RunServer(config *config.Config) error {
 
 	defer logger.Sync()
 
-	storage := storage.NewMemStorage()
-	uploadService, err := metricuploader.New(config, storage, logger)
+	ctx := context.Background()
+
+	storage := setupStorage(config, logger)
+	defer storage.Close(ctx)
+
+	err = storage.Init(ctx)
 
 	if err != nil {
 		return err
 	}
 
-	defer uploadService.Close()
-
-	metricService := metricprocessor.New(storage, uploadService, config)
+	metricService := metricprocessor.New(storage, config)
 	metricAdapter := metric.New(metricService, logger)
 
 	r := chi.NewRouter()
 	r.Mount("/", metricAdapter.Route())
 
-	uploadService.StoreInterval()
-	loadErr := uploadService.Load()
-
-	if loadErr != nil {
-		return loadErr
-	}
-
 	logger.Infow("start server", "address", config.Address, "config", config)
 	return http.ListenAndServe(config.Address, r)
+}
+
+func setupStorage(cfg *config.Config, logger logger.ILogger) storage.Storage {
+	memoryStorage := storage.NewMemStorage()
+
+	if cfg.DatabaseDSN != "" {
+		return storage.NewPostgresStorage(cfg)
+	}
+
+	if cfg.FileStoragePath != "" {
+		return storage.NewFileStorage(cfg, memoryStorage, logger)
+	}
+
+	return memoryStorage
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
-	"github.com/sodiqit/metricpulse.git/internal/server/services/metricuploader"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 )
 
@@ -17,9 +16,8 @@ type MetricService interface {
 }
 
 type MetricProcessor struct {
-	storage  storage.Storage
-	uploader metricuploader.Uploader
-	config   *config.Config
+	storage storage.Storage
+	config  *config.Config
 }
 
 type MetricValue struct {
@@ -42,11 +40,6 @@ func (s *MetricProcessor) SaveMetric(metricType string, metricName string, metri
 		saveErr = fmt.Errorf("unsupported metricType: %s", metricType)
 	}
 
-	if s.config.StoreInterval == 0 && saveErr == nil {
-		err := s.uploader.Save()
-		saveErr = err
-	}
-
 	return result, saveErr
 }
 
@@ -67,6 +60,6 @@ func (s *MetricProcessor) GetAllMetrics() (entities.TotalMetrics, error) {
 	return s.storage.GetAllMetrics()
 }
 
-func New(storage storage.Storage, uploader metricuploader.Uploader, cfg *config.Config) *MetricProcessor {
-	return &MetricProcessor{storage, uploader, cfg}
+func New(storage storage.Storage, cfg *config.Config) *MetricProcessor {
+	return &MetricProcessor{storage, cfg}
 }
