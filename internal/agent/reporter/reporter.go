@@ -21,7 +21,7 @@ type MetricReporter struct {
 	logger     logger.ILogger
 	serverAddr string
 }
-//FIXME: refactor and use batch
+
 func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 	var metricsList []entities.Metrics
 
@@ -49,7 +49,7 @@ func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 
 	buf, err := wrapBodyInGzip(metricsList)
 	if err != nil {
-		r.logger.Errorw("error while wrapping body in gzip", "error", err.Error())
+		r.logger.Errorw("error while wrapping body in gzip", "error", err)
 		return
 	}
 
@@ -62,48 +62,11 @@ func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 		Post(url)
 
 	if err != nil {
-		r.logger.Errorw("error while sending metrics batch", "error", err.Error())
+		r.logger.Errorw("error while sending metrics batch", "error", err)
 		return
 	}
 
 	r.logger.Infow("success sending metrics batch", "result", resp.String())
-}
-
-func (r *MetricReporter) SendMetrics1(metrics map[string]interface{}) {
-
-	for metricName, metricValue := range metrics {
-		body := entities.Metrics{ID: metricName}
-
-		switch val := metricValue.(type) {
-		case float64:
-			body.MType = constants.MetricTypeGauge
-			body.Value = &val
-		case int64:
-			body.MType = constants.MetricTypeCounter
-			body.Delta = &val
-		default:
-			r.logger.Errorw("unsupported metric type", "metricName", metricName)
-			continue
-		}
-
-		url := fmt.Sprintf("http://%s/update/", r.serverAddr)
-
-		buf, err := wrapBodyInGzip(body)
-
-		if err != nil {
-			r.logger.Errorw("error while wrap body in gzip", "metricName", metricName, "error", err.Error())
-			continue
-		}
-
-		resp, err := r.client.R().SetHeader("Content-Type", "application/json").SetHeader("Content-Encoding", "gzip").SetBody(buf).Post(url)
-
-		if err != nil {
-			r.logger.Errorw("error while sending metric", "metricName", metricName, "error", err.Error())
-			continue
-		}
-
-		r.logger.Infow("success sending metric", "metricName", metricName, "result", resp.String())
-	}
 }
 
 func NewMetricReporter(serverAddr string, client *resty.Client, logger logger.ILogger) *MetricReporter {

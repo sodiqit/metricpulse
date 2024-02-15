@@ -156,3 +156,17 @@ func (mr *MockStorageMockRecorder) SaveGaugeMetric(ctx, metricType, value any) *
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGaugeMetric", reflect.TypeOf((*MockStorage)(nil).SaveGaugeMetric), ctx, metricType, value)
 }
+
+// SaveMetricBatch mocks base method.
+func (m *MockStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveMetricBatch", ctx, metrics)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveMetricBatch indicates an expected call of SaveMetricBatch.
+func (mr *MockStorageMockRecorder) SaveMetricBatch(ctx, metrics any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveMetricBatch", reflect.TypeOf((*MockStorage)(nil).SaveMetricBatch), ctx, metrics)
+}

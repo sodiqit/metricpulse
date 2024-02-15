@@ -77,6 +77,26 @@ func (s *PostgresStorage) SaveCounterMetric(ctx context.Context, metricType stri
 	return result, err
 }
 
+func (s *PostgresStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
+	batch := &pgx.Batch{}
+
+	for _, metric := range metrics {
+		var value float64
+
+		if metric.MType == constants.MetricTypeGauge {
+			value = *metric.Value
+		} else {
+			value = float64(*metric.Delta)
+		}
+
+		batch.Queue(getUpdateMetricQuery(metric.MType), pgx.NamedArgs{"type": metric.MType, "name": metric.ID, "value": value})
+	}
+
+	err := s.pool.SendBatch(ctx, batch).Close()
+
+	return err
+}
+
 func (s *PostgresStorage) GetGaugeMetric(ctx context.Context, metricName string) (float64, error) {
 	var result float64
 

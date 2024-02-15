@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 )
 
@@ -51,6 +52,18 @@ func (m *MemStorage) GetCounterMetric(ctx context.Context, metricName string) (i
 
 func (m *MemStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error) {
 	return entities.TotalMetrics{Gauge: m.gauge, Counter: m.counter}, nil
+}
+
+func (s *MemStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
+	for _, metric := range metrics {
+		if metric.MType == constants.MetricTypeGauge {
+			s.SaveGaugeMetric(ctx, metric.ID, *metric.Value)
+		} else {
+			s.SaveCounterMetric(ctx, metric.ID, *metric.Delta)
+		}
+	}
+
+	return nil
 }
 
 func (m *MemStorage) InitMetrics(metrics entities.TotalMetrics) error {

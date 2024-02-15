@@ -12,6 +12,7 @@ type Storage interface {
 	GetCounterMetric(ctx context.Context, metricType string) (int64, error)
 	GetGaugeMetric(ctx context.Context, metricType string) (float64, error)
 	GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error)
+	SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error
 	Init(context.Context) error
 	Ping(context.Context) error
 	Close(context.Context) error

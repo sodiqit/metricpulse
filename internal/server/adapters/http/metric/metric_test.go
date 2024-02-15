@@ -570,3 +570,86 @@ func TestPingHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestBatchUpdatesMetricHandler(t *testing.T) {
+	r := chi.NewRouter()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := metric.New(metricServiceMock, storageMock, logger)
+
+	r.Mount("/", c.Route())
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	client := resty.New().SetBaseURL(ts.URL).SetHeader("Content-Type", "application/json")
+
+	tests := []struct {
+		name                string
+		method              string
+		url                 string
+		body                string
+		setupMock           func()
+		expectedContentType string
+		expectedStatus      int
+	}{
+		{
+			name:   "valid batch update",
+			method: http.MethodPost,
+			url:    "/updates/",
+			body: `[
+				{
+				  "id": "test",
+				  "type": "counter",
+				  "delta": 100
+				},
+				{
+					"id": "test",
+					"type": "gauge",
+					"value": 200.123125
+				}
+			]`,
+			setupMock: func() {
+				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:   "invalid update",
+			method: http.MethodPost,
+			body: `[{"id": "test", "type": "counter", "delta": 100}]`,
+			url:    "/updates/",
+			setupMock: func() {
+				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("save error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setupMock()
+
+			req := client.R()
+
+			req.Method = tc.method
+			req.URL = tc.url
+			req.Body = tc.body
+
+			resp, err := req.Send()
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
+		})
+	}
+}

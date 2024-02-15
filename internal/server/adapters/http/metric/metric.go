@@ -42,12 +42,6 @@ func (a *Adapter) Route() *chi.Mux {
 
 	return r
 }
-//FIXME: refactor and use batch
-// type parsedMetric struct {
-// 	ID    string
-// 	MType string          
-// 	Value metricprocessor.MetricValue
-// }
 
 func (a *Adapter) handleUpdatesMetric(w http.ResponseWriter, r *http.Request) {
 	var metrics []entities.Metrics
@@ -64,15 +58,11 @@ func (a *Adapter) handleUpdatesMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, metric := range metrics {
-		val, err := parseMetricValue(metric)
+	err := a.storage.SaveMetricBatch(r.Context(), metrics)
 
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		a.metricService.SaveMetric(r.Context(), metric.MType, metric.ID, val)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	w.Write([]byte(""))

@@ -56,6 +56,18 @@ func (s *FileStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetrics,
 	return s.storage.GetAllMetrics(ctx)
 }
 
+func (s *FileStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
+	err := s.storage.SaveMetricBatch(ctx, metrics)
+
+	if s.cfg.StoreInterval != 0 || err != nil {
+		return err
+	}
+
+	err = s.save(ctx)
+
+	return err
+}
+
 func (s *FileStorage) Init(ctx context.Context) error {
 	if s.cfg.FileStoragePath == "" {
 		return errors.New("file not provided for start file storage")
