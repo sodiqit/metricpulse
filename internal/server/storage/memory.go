@@ -54,12 +54,12 @@ func (m *MemStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetrics, 
 	return entities.TotalMetrics{Gauge: m.gauge, Counter: m.counter}, nil
 }
 
-func (s *MemStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
+func (m *MemStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
 	for _, metric := range metrics {
 		if metric.MType == constants.MetricTypeGauge {
-			s.SaveGaugeMetric(ctx, metric.ID, *metric.Value)
+			m.SaveGaugeMetric(ctx, metric.ID, *metric.Value)
 		} else {
-			s.SaveCounterMetric(ctx, metric.ID, *metric.Delta)
+			m.SaveCounterMetric(ctx, metric.ID, *metric.Delta)
 		}
 	}
 
