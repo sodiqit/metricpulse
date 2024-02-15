@@ -33,7 +33,7 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 
 	defer httpmock.DeactivateAndReset()
 
-	mockURL := "http://localhost:8080/update/"
+	mockURL := "http://localhost:8080/updates/"
 
 	tests := []struct {
 		name          string

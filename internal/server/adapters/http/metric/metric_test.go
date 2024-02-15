@@ -112,7 +112,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.expectedStatus == http.StatusOK {
-				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(tc.returnValue, nil)
+				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(tc.returnValue, nil)
 			}
 
 			req := client.R().SetBody(tc.body)
@@ -181,7 +181,7 @@ func TestGetMetricHandler(t *testing.T) {
 			method: http.MethodPost,
 			url:    "/value/",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
 			},
 			contentType:    "application/json",
 			body:           `{"id": "temp", "type": "gauge"}`,
@@ -194,7 +194,7 @@ func TestGetMetricHandler(t *testing.T) {
 			url:         "/value/",
 			contentType: "application/json",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
 			},
 			body:           `{"id": "temp", "type": "counter"}`,
 			expectedResult: `{"id": "temp", "type": "counter", "delta": 100}`,
@@ -207,7 +207,7 @@ func TestGetMetricHandler(t *testing.T) {
 			body:        `{"id": "temp", "type": "gauge"}`,
 			contentType: "application/json",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -312,7 +312,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.expectedStatus == http.StatusOK {
-				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{}, nil)
+				metricServiceMock.EXPECT().SaveMetric(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(metricprocessor.MetricValue{}, nil)
 			}
 
 			req := client.R()
@@ -364,7 +364,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/value/gauge/temp",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{Gauge: 100.156}, nil)
 			},
 			expectedResult: "100.156",
 			expectedStatus: http.StatusOK,
@@ -374,7 +374,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/value/counter/temp",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeCounter, "temp").Times(1).Return(metricprocessor.MetricValue{Counter: 100}, nil)
 			},
 			expectedResult: "100",
 			expectedStatus: http.StatusOK,
@@ -384,7 +384,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/value/gauge/temp",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -461,7 +461,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetAllMetrics().Times(1).Return(entities.TotalMetrics{}, nil)
+				metricServiceMock.EXPECT().GetAllMetrics(gomock.Any()).Times(1).Return(entities.TotalMetrics{}, nil)
 			},
 			expectedContentType: "text/html",
 			expectedStatus:      http.StatusOK,
@@ -562,6 +562,89 @@ func TestPingHandler(t *testing.T) {
 
 			req.Method = tc.method
 			req.URL = tc.url
+
+			resp, err := req.Send()
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
+		})
+	}
+}
+
+func TestBatchUpdatesMetricHandler(t *testing.T) {
+	r := chi.NewRouter()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	c := metric.New(metricServiceMock, storageMock, logger)
+
+	r.Mount("/", c.Route())
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	client := resty.New().SetBaseURL(ts.URL).SetHeader("Content-Type", "application/json")
+
+	tests := []struct {
+		name                string
+		method              string
+		url                 string
+		body                string
+		setupMock           func()
+		expectedContentType string
+		expectedStatus      int
+	}{
+		{
+			name:   "valid batch update",
+			method: http.MethodPost,
+			url:    "/updates/",
+			body: `[
+				{
+				  "id": "test",
+				  "type": "counter",
+				  "delta": 100
+				},
+				{
+					"id": "test",
+					"type": "gauge",
+					"value": 200.123125
+				}
+			]`,
+			setupMock: func() {
+				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:   "invalid update",
+			method: http.MethodPost,
+			body: `[{"id": "test", "type": "counter", "delta": 100}]`,
+			url:    "/updates/",
+			setupMock: func() {
+				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("save error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setupMock()
+
+			req := client.R()
+
+			req.Method = tc.method
+			req.URL = tc.url
+			req.Body = tc.body
 
 			resp, err := req.Send()
 

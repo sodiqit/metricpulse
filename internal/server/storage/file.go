@@ -20,40 +20,52 @@ type FileStorage struct {
 	logger  logger.ILogger
 }
 
-func (s *FileStorage) SaveGaugeMetric(metricType string, value float64) (float64, error) {
-	res, err := s.storage.SaveGaugeMetric(metricType, value)
+func (s *FileStorage) SaveGaugeMetric(ctx context.Context, metricType string, value float64) (float64, error) {
+	res, err := s.storage.SaveGaugeMetric(ctx, metricType, value)
 
 	if s.cfg.StoreInterval != 0 || err != nil {
 		return res, err
 	}
 
-	err = s.save()
+	err = s.save(ctx)
 
 	return res, err
 }
 
-func (s *FileStorage) SaveCounterMetric(metricType string, value int64) (int64, error) {
-	res, err := s.storage.SaveCounterMetric(metricType, value)
+func (s *FileStorage) SaveCounterMetric(ctx context.Context, metricType string, value int64) (int64, error) {
+	res, err := s.storage.SaveCounterMetric(ctx, metricType, value)
 
 	if s.cfg.StoreInterval != 0 || err != nil {
 		return res, err
 	}
 
-	err = s.save()
+	err = s.save(ctx)
 
 	return res, err
 }
 
-func (s *FileStorage) GetGaugeMetric(metricName string) (float64, error) {
-	return s.storage.GetGaugeMetric(metricName)
+func (s *FileStorage) GetGaugeMetric(ctx context.Context, metricName string) (float64, error) {
+	return s.storage.GetGaugeMetric(ctx, metricName)
 }
 
-func (s *FileStorage) GetCounterMetric(metricName string) (int64, error) {
-	return s.storage.GetCounterMetric(metricName)
+func (s *FileStorage) GetCounterMetric(ctx context.Context, metricName string) (int64, error) {
+	return s.storage.GetCounterMetric(ctx, metricName)
 }
 
-func (s *FileStorage) GetAllMetrics() (entities.TotalMetrics, error) {
-	return s.storage.GetAllMetrics()
+func (s *FileStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error) {
+	return s.storage.GetAllMetrics(ctx)
+}
+
+func (s *FileStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
+	err := s.storage.SaveMetricBatch(ctx, metrics)
+
+	if s.cfg.StoreInterval != 0 || err != nil {
+		return err
+	}
+
+	err = s.save(ctx)
+
+	return err
 }
 
 func (s *FileStorage) Init(ctx context.Context) error {
@@ -69,7 +81,7 @@ func (s *FileStorage) Init(ctx context.Context) error {
 
 	s.file = file
 
-	err = s.storeInterval()
+	err = s.storeInterval(ctx)
 
 	if err != nil {
 		return err
@@ -91,7 +103,7 @@ func (s *FileStorage) Close(ctx context.Context) error {
 
 	defer s.file.Close()
 
-	err := s.save()
+	err := s.save(ctx)
 
 	return err
 }
@@ -130,12 +142,12 @@ func (s *FileStorage) load() error {
 	return nil
 }
 
-func (s *FileStorage) save() error {
+func (s *FileStorage) save(ctx context.Context) error {
 	if s.file == nil {
 		return errors.New("file not found")
 	}
 
-	metrics, err := s.storage.GetAllMetrics()
+	metrics, err := s.storage.GetAllMetrics(ctx)
 
 	if err != nil {
 		return err
@@ -164,7 +176,7 @@ func (s *FileStorage) save() error {
 	return nil
 }
 
-func (s *FileStorage) storeInterval() error {
+func (s *FileStorage) storeInterval(ctx context.Context) error {
 	if s.cfg.StoreInterval == 0 {
 		return nil
 	}
@@ -172,7 +184,7 @@ func (s *FileStorage) storeInterval() error {
 	go func() {
 		for {
 			time.Sleep(storeDuration)
-			err := s.save()
+			err := s.save(ctx)
 
 			if err != nil {
 				s.logger.Errorw("error while saving", "error", err)

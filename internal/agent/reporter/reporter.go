@@ -5,8 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sodiqit/metricpulse.git/internal/constants"
@@ -24,45 +22,51 @@ type MetricReporter struct {
 	serverAddr string
 }
 
-type HTTPClient interface {
-	Post(url, contentType string, body io.Reader) (resp *http.Response, err error)
-}
-
 func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
+	var metricsList []entities.Metrics
 
 	for metricName, metricValue := range metrics {
-		body := entities.Metrics{ID: metricName}
+		metric := entities.Metrics{ID: metricName}
 
 		switch val := metricValue.(type) {
 		case float64:
-			body.MType = constants.MetricTypeGauge
-			body.Value = &val
+			metric.MType = constants.MetricTypeGauge
+			metric.Value = &val
 		case int64:
-			body.MType = constants.MetricTypeCounter
-			body.Delta = &val
+			metric.MType = constants.MetricTypeCounter
+			metric.Delta = &val
 		default:
 			r.logger.Errorw("unsupported metric type", "metricName", metricName)
 			continue
 		}
 
-		url := fmt.Sprintf("http://%s/update/", r.serverAddr)
-
-		buf, err := wrapBodyInGzip(body)
-
-		if err != nil {
-			r.logger.Errorw("error while wrap body in gzip", "metricName", metricName, "error", err.Error())
-			continue
-		}
-
-		resp, err := r.client.R().SetHeader("Content-Type", "application/json").SetHeader("Content-Encoding", "gzip").SetBody(buf).Post(url)
-
-		if err != nil {
-			r.logger.Errorw("error while sending metric", "metricName", metricName, "error", err.Error())
-			continue
-		}
-
-		r.logger.Infow("success sending metric", "metricName", metricName, "result", resp.String())
+		metricsList = append(metricsList, metric)
 	}
+
+	if len(metricsList) == 0 {
+		return
+	}
+
+	buf, err := wrapBodyInGzip(metricsList)
+	if err != nil {
+		r.logger.Errorw("error while wrapping body in gzip", "error", err)
+		return
+	}
+
+	// Отправка сжатого списка метрик
+	url := fmt.Sprintf("http://%s/updates/", r.serverAddr)
+	resp, err := r.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(buf.Bytes()).
+		Post(url)
+
+	if err != nil {
+		r.logger.Errorw("error while sending metrics batch", "error", err)
+		return
+	}
+
+	r.logger.Infow("success sending metrics batch", "result", resp.String())
 }
 
 func NewMetricReporter(serverAddr string, client *resty.Client, logger logger.ILogger) *MetricReporter {
