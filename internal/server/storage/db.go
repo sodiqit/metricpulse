@@ -212,10 +212,6 @@ func (s *PostgresStorage) Init(ctx context.Context, backoff retry.Backoff) error
 
 	tx.Commit(ctx)
 
-	if err != nil {
-		return err
-	}
-
 	s.logger.Infow("success connect to database")
 
 	return nil
