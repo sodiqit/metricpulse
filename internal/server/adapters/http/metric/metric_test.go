@@ -207,7 +207,7 @@ func TestGetMetricHandler(t *testing.T) {
 			body:        `{"id": "temp", "type": "gauge"}`,
 			contentType: "application/json",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, storage.NewErrNotFound(errors.New(""), map[string]interface{}{}))
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -384,7 +384,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 			method: http.MethodGet,
 			url:    "/value/gauge/temp",
 			setupMock: func() {
-				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, errors.New("not found metric"))
+				metricServiceMock.EXPECT().GetMetric(gomock.Any(), constants.MetricTypeGauge, "temp").Times(1).Return(metricprocessor.MetricValue{}, storage.NewErrNotFound(errors.New(""), map[string]interface{}{}))
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -627,7 +627,7 @@ func TestBatchUpdatesMetricHandler(t *testing.T) {
 		{
 			name:   "invalid update",
 			method: http.MethodPost,
-			body: `[{"id": "test", "type": "counter", "delta": 100}]`,
+			body:   `[{"id": "test", "type": "counter", "delta": 100}]`,
 			url:    "/updates/",
 			setupMock: func() {
 				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("save error"))

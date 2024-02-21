@@ -7,6 +7,7 @@ require (
 	github.com/georgysavva/scany/v2 v2.1.0
 	github.com/go-chi/chi/v5 v5.0.11
 	github.com/go-resty/resty/v2 v2.11.0
+	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/stretchr/testify v1.8.4

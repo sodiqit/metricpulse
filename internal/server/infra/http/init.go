@@ -10,6 +10,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 func RunServer(config *config.Config) error {
@@ -26,7 +27,7 @@ func RunServer(config *config.Config) error {
 	storage := setupStorage(config, logger)
 	defer storage.Close(ctx)
 
-	err = storage.Init(ctx)
+	err = storage.Init(ctx, retry.NewBaseBackoff())
 
 	if err != nil {
 		return err

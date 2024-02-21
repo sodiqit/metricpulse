@@ -3,6 +3,7 @@ package reporter
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -10,10 +11,11 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 type IMetricReporter interface {
-	SendMetrics(metrics map[string]interface{})
+	SendMetrics(ctx context.Context, metrics map[string]interface{}, backoff retry.Backoff)
 }
 
 type MetricReporter struct {
@@ -22,7 +24,7 @@ type MetricReporter struct {
 	serverAddr string
 }
 
-func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
+func (r *MetricReporter) SendMetrics(ctx context.Context, metrics map[string]interface{}, backoff retry.Backoff) {
 	var metricsList []entities.Metrics
 
 	for metricName, metricValue := range metrics {
@@ -55,11 +57,22 @@ func (r *MetricReporter) SendMetrics(metrics map[string]interface{}) {
 
 	// Отправка сжатого списка метрик
 	url := fmt.Sprintf("http://%s/updates/", r.serverAddr)
-	resp, err := r.client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Content-Encoding", "gzip").
-		SetBody(buf.Bytes()).
-		Post(url)
+
+	resp, err := retry.DoWithData(ctx, backoff, func(ctx context.Context) (*resty.Response, error) {
+		r.logger.Infow("try send metric on server")
+
+		resp, err := r.client.R().
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Content-Encoding", "gzip").
+			SetBody(buf.Bytes()).
+			Post(url)
+
+		if err != nil || resp.StatusCode() >= 500 {
+			return resp, retry.RetryableError(err)
+		}
+
+		return resp, err
+	})
 
 	if err != nil {
 		r.logger.Errorw("error while sending metrics batch", "error", err)

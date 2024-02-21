@@ -3,14 +3,18 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 var ErrNotConnection = errors.New("not connection. Maybe not invoked Init() method")
@@ -59,7 +63,7 @@ func (s *PostgresStorage) SaveGaugeMetric(ctx context.Context, metricType string
 	err := s.pool.QueryRow(ctx, getUpdateMetricQuery(constants.MetricTypeGauge), pgx.NamedArgs{"type": constants.MetricTypeGauge, "value": value, "name": metricType}).Scan(&result)
 
 	if err != nil {
-		s.logger.Errorw("error while save gauge metric", "error", err, "metricName", metricType, "value", value)
+		return 0, fmt.Errorf("error while save gauge metric; metricName: %s, metricValue: %f, err: %w", metricType, value, err)
 	}
 
 	return result, err
@@ -71,13 +75,17 @@ func (s *PostgresStorage) SaveCounterMetric(ctx context.Context, metricType stri
 	err := s.pool.QueryRow(ctx, getUpdateMetricQuery(constants.MetricTypeCounter), pgx.NamedArgs{"type": constants.MetricTypeCounter, "value": value, "name": metricType}).Scan(&result)
 
 	if err != nil {
-		s.logger.Errorw("error while save counter metric", "error", err, "metricName", metricType, "value", value)
+		return 0, fmt.Errorf("error while save counter metric; metricName: %s, metricValue: %d, err: %w", metricType, value, err)
 	}
 
 	return result, err
 }
 
 func (s *PostgresStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error {
+	if s.pool == nil {
+		return ErrNotConnection
+	}
+
 	batch := &pgx.Batch{}
 
 	for _, metric := range metrics {
@@ -100,10 +108,14 @@ func (s *PostgresStorage) SaveMetricBatch(ctx context.Context, metrics []entitie
 func (s *PostgresStorage) GetGaugeMetric(ctx context.Context, metricName string) (float64, error) {
 	var result float64
 
+	if s.pool == nil {
+		return 0, ErrNotConnection
+	}
+
 	err := s.pool.QueryRow(ctx, selectMetricQuery, pgx.NamedArgs{"type": constants.MetricTypeGauge, "name": metricName}).Scan(&result)
 
-	if err != nil {
-		s.logger.Errorw("error while get gauge metric", "error", err, "metricName", metricName)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return result, NewErrNotFound(err, map[string]interface{}{"metricName": metricName})
 	}
 
 	return result, err
@@ -112,23 +124,34 @@ func (s *PostgresStorage) GetGaugeMetric(ctx context.Context, metricName string)
 func (s *PostgresStorage) GetCounterMetric(ctx context.Context, metricName string) (int64, error) {
 	var result int64
 
+	if s.pool == nil {
+		return 0, ErrNotConnection
+	}
+
 	err := s.pool.QueryRow(ctx, selectMetricQuery, pgx.NamedArgs{"type": constants.MetricTypeCounter, "name": metricName}).Scan(&result)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return result, NewErrNotFound(err, map[string]interface{}{"metricName": metricName})
+	}
+
 	if err != nil {
-		s.logger.Errorw("error while get gauge metric", "error", err, "metricName", metricName)
+		return 0, fmt.Errorf("error while get counter metric; metricName: %s, err: %w", metricName, err)
 	}
 
 	return result, err
 }
 
 func (s *PostgresStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error) {
+	if s.pool == nil {
+		return entities.TotalMetrics{}, ErrNotConnection
+	}
+
 	var rawResult []rawMetric
 
 	err := pgxscan.Select(ctx, s.pool, &rawResult, "SELECT * FROM metric")
 
 	if err != nil {
-		s.logger.Errorw("error while get all metrics", "error", err)
-		return entities.TotalMetrics{}, err
+		return entities.TotalMetrics{}, fmt.Errorf("error while get metrics; err: %w", err)
 	}
 
 	result := entities.TotalMetrics{Gauge: make(map[string]float64), Counter: make(map[string]int64)}
@@ -144,8 +167,23 @@ func (s *PostgresStorage) GetAllMetrics(ctx context.Context) (entities.TotalMetr
 	return result, nil
 }
 
-func (s *PostgresStorage) Init(ctx context.Context) error {
+func (s *PostgresStorage) Init(ctx context.Context, backoff retry.Backoff) error {
 	pool, err := pgxpool.New(ctx, s.cfg.DatabaseDSN)
+
+	if err != nil {
+		return err
+	}
+
+	err = retry.Do(ctx, backoff, func(ctx context.Context) error {
+		s.logger.Infow("try connect to database")
+		err := pool.Ping(ctx)
+
+		if isRetriableError(err) {
+			return retry.RetryableError(err)
+		}
+
+		return err
+	})
 
 	if err != nil {
 		return err
@@ -174,7 +212,9 @@ func (s *PostgresStorage) Init(ctx context.Context) error {
 
 	tx.Commit(ctx)
 
-	return err
+	s.logger.Infow("success connect to database")
+
+	return nil
 }
 
 func (s *PostgresStorage) Ping(ctx context.Context) error {
@@ -197,4 +237,12 @@ func (s *PostgresStorage) Close(ctx context.Context) error {
 
 func NewPostgresStorage(cfg *config.Config, logger logger.ILogger) *PostgresStorage {
 	return &PostgresStorage{cfg, logger, nil}
+}
+
+func isRetriableError(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == pgerrcode.ConnectionException || pgErr.Code == pgerrcode.ConnectionDoesNotExist
+	}
+	return false
 }

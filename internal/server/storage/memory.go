@@ -2,10 +2,11 @@ package storage
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 type MemStorage struct {
@@ -36,7 +37,7 @@ func (m *MemStorage) GetGaugeMetric(ctx context.Context, metricName string) (flo
 	if ok {
 		return val, nil
 	} else {
-		return 0, fmt.Errorf("not found metric: %s", metricName)
+		return val, NewErrNotFound(errors.New("not found metric"), map[string]interface{}{"metricName": metricName})
 	}
 }
 
@@ -46,7 +47,7 @@ func (m *MemStorage) GetCounterMetric(ctx context.Context, metricName string) (i
 	if ok {
 		return val, nil
 	} else {
-		return 0, fmt.Errorf("not found metric: %s", metricName)
+		return val, NewErrNotFound(errors.New("not found metric"), map[string]interface{}{"metricName": metricName})
 	}
 }
 
@@ -72,7 +73,7 @@ func (m *MemStorage) InitMetrics(metrics entities.TotalMetrics) error {
 	return nil
 }
 
-func (m *MemStorage) Init(context.Context) error {
+func (m *MemStorage) Init(context.Context, retry.Backoff) error {
 	return nil
 }
 

@@ -2,6 +2,7 @@ package reporter_test
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -86,7 +88,7 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 
 			r := reporter.NewMetricReporter("localhost:8080", client, logger)
 
-			r.SendMetrics(tt.metrics)
+			r.SendMetrics(context.Background(), tt.metrics, retry.EmptyBackoff)
 
 			assert.Equal(t, tt.expectedCalls, httpmock.GetTotalCallCount(), "Unexpected number of calls")
 		})

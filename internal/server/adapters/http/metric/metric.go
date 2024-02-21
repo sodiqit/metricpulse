@@ -115,8 +115,13 @@ func (a *Adapter) handleTextGetMetric(w http.ResponseWriter, r *http.Request) {
 
 	val, err := a.metricService.GetMetric(r.Context(), metricType, metricName)
 
-	if err != nil {
+	if storage.IsErrNotFound(err) {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metricName), http.StatusNotFound)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -199,8 +204,13 @@ func (a *Adapter) handleGetMetric(w http.ResponseWriter, r *http.Request) {
 
 	val, err := a.metricService.GetMetric(r.Context(), metrics.MType, metrics.ID)
 
-	if err != nil {
+	if storage.IsErrNotFound(err) {
 		http.Error(w, fmt.Sprintf("Not found metric: %s", metrics.ID), http.StatusNotFound)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
