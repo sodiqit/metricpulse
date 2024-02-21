@@ -11,6 +11,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 type FileStorage struct {
@@ -68,12 +69,20 @@ func (s *FileStorage) SaveMetricBatch(ctx context.Context, metrics []entities.Me
 	return err
 }
 
-func (s *FileStorage) Init(ctx context.Context) error {
+func (s *FileStorage) Init(ctx context.Context, backoff retry.Backoff) error {
 	if s.cfg.FileStoragePath == "" {
 		return errors.New("file not provided for start file storage")
 	}
 
-	file, err := os.OpenFile(s.cfg.FileStoragePath, os.O_RDWR|os.O_CREATE, 0666)
+	file, err := retry.DoWithData(ctx, backoff, func(ctx context.Context) (*os.File, error) {
+		f, err := os.OpenFile(s.cfg.FileStoragePath, os.O_RDWR|os.O_CREATE, 0666)
+
+		if err != nil {
+			return f, retry.RetryableError(err)
+		}
+
+		return f, nil
+	})
 
 	if err != nil {
 		return err

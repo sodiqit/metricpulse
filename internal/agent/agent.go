@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"math/rand"
 	"runtime"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 type MetricCounters struct {
@@ -56,6 +58,7 @@ func CollectMetrics(mc *MetricCounters) map[string]interface{} {
 }
 
 func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval time.Duration, logLevel string) error {
+	ctx := context.Background()
 	mc := MetricCounters{}
 	logger, err := logger.Initialize(logLevel)
 
@@ -76,7 +79,7 @@ func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval 
 
 	for {
 		metrics := CollectMetrics(&mc)
-		reporter.SendMetrics(metrics)
+		reporter.SendMetrics(ctx, metrics, retry.NewBaseBackoff())
 		time.Sleep(reportInterval)
 	}
 }

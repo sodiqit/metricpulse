@@ -6,6 +6,7 @@ import (
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 type MemStorage struct {
@@ -72,7 +73,7 @@ func (m *MemStorage) InitMetrics(metrics entities.TotalMetrics) error {
 	return nil
 }
 
-func (m *MemStorage) Init(context.Context) error {
+func (m *MemStorage) Init(context.Context, retry.Backoff) error {
 	return nil
 }
 

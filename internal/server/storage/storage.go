@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/sodiqit/metricpulse.git/internal/entities"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
 type Storage interface {
@@ -13,7 +14,7 @@ type Storage interface {
 	GetGaugeMetric(ctx context.Context, metricType string) (float64, error)
 	GetAllMetrics(ctx context.Context) (entities.TotalMetrics, error)
 	SaveMetricBatch(ctx context.Context, metrics []entities.Metrics) error
-	Init(context.Context) error
+	Init(context.Context, retry.Backoff) error
 	Ping(context.Context) error
 	Close(context.Context) error
 }

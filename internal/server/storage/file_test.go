@@ -11,6 +11,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
+	"github.com/sodiqit/metricpulse.git/pkg/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +46,7 @@ func TestFileStorage_SaveInFile(t *testing.T) {
 				fileStorage := storage.NewFileStorage(&cfg, store, logger)
 				defer fileStorage.Close(ctx)
 
-				err = fileStorage.Init(ctx)
+				err = fileStorage.Init(ctx, retry.EmptyBackoff)
 				require.NoError(t, err)
 			},
 		},
@@ -63,7 +64,7 @@ func TestFileStorage_SaveInFile(t *testing.T) {
 
 				fileStorage := storage.NewFileStorage(&cfg, storage.NewMemStorage(), logger)
 				defer fileStorage.Close(ctx)
-				err = fileStorage.Init(ctx)
+				err = fileStorage.Init(ctx, retry.EmptyBackoff)
 				require.NoError(t, err)
 
 				_, err = fileStorage.SaveCounterMetric(ctx, "test", 1)
@@ -87,7 +88,7 @@ func TestFileStorage_SaveInFile(t *testing.T) {
 
 				fileStorage := storage.NewFileStorage(&cfg, storage.NewMemStorage(), logger)
 				defer fileStorage.Close(ctx)
-				err = fileStorage.Init(ctx)
+				err = fileStorage.Init(ctx, retry.EmptyBackoff)
 				require.NoError(t, err)
 
 				_, err = fileStorage.SaveCounterMetric(ctx, "test", 1)
@@ -126,7 +127,7 @@ func TestFileStorage_SaveInFile(t *testing.T) {
 
 				fileStorage := storage.NewFileStorage(&cfg, storage.NewMemStorage(), logger)
 				defer fileStorage.Close(ctx)
-				err = fileStorage.Init(ctx)
+				err = fileStorage.Init(ctx, retry.EmptyBackoff)
 				require.NoError(t, err)
 
 				_, err = fileStorage.SaveCounterMetric(ctx, "test", 1)
@@ -173,7 +174,7 @@ func TestFileStorage_LoadFromFile(t *testing.T) {
 
 				fileStorage := storage.NewFileStorage(&cfg, store, logger)
 				defer fileStorage.Close(ctx)
-				err = fileStorage.Init(ctx)
+				err = fileStorage.Init(ctx, retry.EmptyBackoff)
 				require.NoError(t, err)
 
 				store1 := storage.NewMemStorage()
@@ -207,7 +208,7 @@ func TestFileStorage_LoadFromFile(t *testing.T) {
 
 				fileStorage := storage.NewFileStorage(&cfg, store, logger)
 				defer fileStorage.Close(ctx)
-				err = fileStorage.Init(ctx)
+				err = fileStorage.Init(ctx, retry.EmptyBackoff)
 				require.NoError(t, err)
 
 				expectedMetrics := entities.TotalMetrics{Counter: map[string]int64{
