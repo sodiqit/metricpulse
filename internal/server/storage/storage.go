@@ -2,10 +2,36 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
+
+type ErrNotFound struct {
+	args map[string]interface{}
+	err  error
+}
+
+func (e *ErrNotFound) Error() string {
+	return fmt.Sprintf("not found rows with args: %#v", e.args)
+}
+
+func (e *ErrNotFound) Unwrap() error {
+	return e.err
+}
+
+func IsErrNotFound(err error) bool {
+	_, ok := err.(*ErrNotFound)
+	return ok
+}
+
+func NewErrNotFound(err error, args map[string]interface{}) error {
+	return &ErrNotFound{
+		args,
+		err,
+	}
+}
 
 type Storage interface {
 	SaveGaugeMetric(ctx context.Context, metricType string, value float64) (float64, error)

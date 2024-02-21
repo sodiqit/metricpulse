@@ -17,31 +17,6 @@ import (
 	"github.com/sodiqit/metricpulse.git/pkg/retry"
 )
 
-type ErrNotFound struct {
-	args map[string]interface{}
-	err  error
-}
-
-func (e *ErrNotFound) Error() string {
-	return fmt.Sprintf("not found rows with args: %#v", e.args)
-}
-
-func (e *ErrNotFound) Unwrap() error {
-	return e.err
-}
-
-func IsErrNotFound(err error) bool {
-	_, ok := err.(*ErrNotFound)
-	return ok
-}
-
-func NewErrNotFound(err error, args map[string]interface{}) error {
-	return &ErrNotFound{
-		args,
-		err,
-	}
-}
-
 var ErrNotConnection = errors.New("not connection. Maybe not invoked Init() method")
 
 func getUpdateMetricQuery(metricType string) string {
@@ -237,11 +212,13 @@ func (s *PostgresStorage) Init(ctx context.Context, backoff retry.Backoff) error
 
 	tx.Commit(ctx)
 
-	if err == nil {
-		s.logger.Infow("success connect to database")
+	if err != nil {
+		return err
 	}
 
-	return err
+	s.logger.Infow("success connect to database")
+
+	return nil
 }
 
 func (s *PostgresStorage) Ping(ctx context.Context) error {
