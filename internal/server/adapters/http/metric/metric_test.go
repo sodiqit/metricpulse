@@ -13,8 +13,10 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
+	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
+	"github.com/sodiqit/metricpulse.git/pkg/signer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -27,6 +29,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 	r := chi.NewRouter()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
 	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
@@ -34,7 +37,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, &config.Config{}, signerMock)
 
 	r.Mount("/", c.Route())
 
@@ -142,6 +145,7 @@ func TestGetMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	storageMock := storage.NewMockStorage(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
 	logger, err := logger.Initialize("info")
 
@@ -149,7 +153,7 @@ func TestGetMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, &config.Config{}, signerMock)
 
 	r.Mount("/", c.Route())
 
@@ -261,6 +265,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
 	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
@@ -268,7 +273,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, &config.Config{}, signerMock)
 
 	r.Mount("/", c.Route())
 
@@ -336,13 +341,14 @@ func TestTextGetMetricHandler(t *testing.T) {
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
 	storageMock := storage.NewMockStorage(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
 	logger, err := logger.Initialize("info")
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, &config.Config{}, signerMock)
 
 	r.Mount("/", c.Route())
 
@@ -432,6 +438,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
 	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
@@ -439,7 +446,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, &config.Config{}, signerMock)
 
 	r.Mount("/", c.Route())
 
@@ -503,6 +510,7 @@ func TestPingHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
 	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
@@ -510,7 +518,7 @@ func TestPingHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, &config.Config{}, signerMock)
 
 	r.Mount("/", c.Route())
 
@@ -578,6 +586,7 @@ func TestBatchUpdatesMetricHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
 	storageMock := storage.NewMockStorage(ctrl)
 	logger, err := logger.Initialize("info")
 
@@ -585,7 +594,7 @@ func TestBatchUpdatesMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, &config.Config{}, signerMock)
 
 	r.Mount("/", c.Route())
 
