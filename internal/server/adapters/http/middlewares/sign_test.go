@@ -16,10 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupSuite(config *config.Config) *httptest.Server {
+func setupSuite(config *config.Config) (*httptest.Server, signer.Signer) {
 	r := chi.NewRouter()
 
-	r.Use(middlewares.WithSignValidator(config, signer.NewSHA256Signer()))
+	s := signer.NewSHA256Signer(config.SecretKey)
+
+	r.Use(middlewares.WithSignValidator(s))
 
 	r.Post("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
@@ -38,20 +40,19 @@ func setupSuite(config *config.Config) *httptest.Server {
 		w.Write([]byte("test"))
 	})
 
-	return httptest.NewServer(r)
+	return httptest.NewServer(r), s
 
 }
 
 func TestSignValidatorMiddleware(t *testing.T) {
 	client := resty.New()
-	sha256Signer := signer.NewSHA256Signer()
 
 	tests := []struct {
 		name             string
 		url              string
 		method           string
 		body             string
-		createSignature  func(signer.Signer, string) string
+		createSignature  func(signer.Signer) string
 		needAssignHeader bool
 		config           *config.Config
 		expectedResult   string
@@ -61,9 +62,9 @@ func TestSignValidatorMiddleware(t *testing.T) {
 			name:   "should return result if provided valid signature",
 			method: http.MethodPost,
 			body:   `{"test": true}`,
-			createSignature: func(signer signer.Signer, key string) string {
+			createSignature: func(signer signer.Signer) string {
 				body := `{"test": true}`
-				return signer.Sign([]byte(body), key)
+				return signer.Sign([]byte(body))
 			},
 			url:              "/test",
 			needAssignHeader: true,
@@ -75,9 +76,9 @@ func TestSignValidatorMiddleware(t *testing.T) {
 			name:   "should return error if provided invalid signature",
 			method: http.MethodPost,
 			body:   `{"test": false}`,
-			createSignature: func(signer signer.Signer, key string) string {
+			createSignature: func(signer signer.Signer) string {
 				body := `{"test": true}`
-				return signer.Sign([]byte(body), key)
+				return signer.Sign([]byte(body))
 			},
 			url:              "/test",
 			config:           &config.Config{SecretKey: "test"},
@@ -88,9 +89,9 @@ func TestSignValidatorMiddleware(t *testing.T) {
 			name:   "should return error if not provide header",
 			method: http.MethodPost,
 			body:   `{"test": true}`,
-			createSignature: func(signer signer.Signer, key string) string {
+			createSignature: func(signer signer.Signer) string {
 				body := `{"test": true}`
-				return signer.Sign([]byte(body), key)
+				return signer.Sign([]byte(body))
 			},
 			url:              "/test",
 			config:           &config.Config{SecretKey: "test"},
@@ -100,7 +101,7 @@ func TestSignValidatorMiddleware(t *testing.T) {
 		{
 			name:   "should not validate sign if not POST method",
 			method: http.MethodGet,
-			createSignature: func(signer signer.Signer, key string) string {
+			createSignature: func(signer signer.Signer) string {
 				return ""
 			},
 			url:              "/test",
@@ -109,27 +110,13 @@ func TestSignValidatorMiddleware(t *testing.T) {
 			expectedStatus:   http.StatusOK,
 			expectedResult:   "test",
 		},
-		{
-			name:   "should not validate sign if not provide key in config",
-			method: http.MethodPost,
-			body:   `{"test": false}`,
-			createSignature: func(signer signer.Signer, key string) string {
-				body := `{"test": true}`
-				return signer.Sign([]byte(body), key)
-			},
-			url:              "/test",
-			needAssignHeader: true,
-			config:           &config.Config{SecretKey: ""},
-			expectedStatus:   http.StatusOK,
-			expectedResult:   `{"test": false}`,
-		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ts := setupSuite(tc.config)
+			ts, sha256Signer := setupSuite(tc.config)
 
-			signature := tc.createSignature(sha256Signer, tc.config.SecretKey)
+			signature := tc.createSignature(sha256Signer)
 
 			defer ts.Close()
 

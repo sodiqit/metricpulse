@@ -35,8 +35,10 @@ func RunServer(config *config.Config) error {
 	}
 
 	metricService := metricprocessor.New(storage, config)
-	sha256Signer := signer.NewSHA256Signer()
-	metricAdapter := metric.New(metricService, storage, logger, config, sha256Signer)
+
+	signer := setupSinger(config)
+
+	metricAdapter := metric.New(metricService, storage, logger, signer)
 
 	r := chi.NewRouter()
 	r.Mount("/", metricAdapter.Route())
@@ -57,4 +59,14 @@ func setupStorage(cfg *config.Config, logger logger.ILogger) storage.Storage {
 	}
 
 	return memoryStorage
+}
+
+func setupSinger(cfg *config.Config) signer.Signer {
+	var sha256Signer *signer.Sha256Signer
+
+	if cfg.SecretKey != "" {
+		sha256Signer = signer.NewSHA256Signer(cfg.SecretKey)
+	}
+
+	return sha256Signer
 }

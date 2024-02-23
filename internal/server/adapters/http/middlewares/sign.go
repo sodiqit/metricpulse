@@ -6,14 +6,13 @@ import (
 	"net/http"
 
 	"github.com/sodiqit/metricpulse.git/internal/constants"
-	"github.com/sodiqit/metricpulse.git/internal/server/config"
 	"github.com/sodiqit/metricpulse.git/pkg/signer"
 )
 
-func WithSignValidator(config *config.Config, signer signer.Signer) func(http.Handler) http.Handler {
+func WithSignValidator(signer signer.Signer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if config.SecretKey == "" || r.Method != http.MethodPost {
+			if r.Method != http.MethodPost {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -26,11 +25,9 @@ func WithSignValidator(config *config.Config, signer signer.Signer) func(http.Ha
 
 			r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-			expectedSignature := signer.Sign(body, config.SecretKey)
-
 			signature := r.Header.Get(constants.HashHeader)
 
-			if signature != expectedSignature {
+			if !signer.Verify(body, signature) {
 				http.Error(w, "Invalid signature", http.StatusBadRequest)
 				return
 			}

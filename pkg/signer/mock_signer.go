@@ -39,15 +39,29 @@ func (m *MockSigner) EXPECT() *MockSignerMockRecorder {
 }
 
 // Sign mocks base method.
-func (m *MockSigner) Sign(data []byte, key string) string {
+func (m *MockSigner) Sign(data []byte) string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Sign", data, key)
+	ret := m.ctrl.Call(m, "Sign", data)
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
 // Sign indicates an expected call of Sign.
-func (mr *MockSignerMockRecorder) Sign(data, key any) *gomock.Call {
+func (mr *MockSignerMockRecorder) Sign(data any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sign", reflect.TypeOf((*MockSigner)(nil).Sign), data, key)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sign", reflect.TypeOf((*MockSigner)(nil).Sign), data)
+}
+
+// Verify mocks base method.
+func (m *MockSigner) Verify(data []byte, signature string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Verify", data, signature)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Verify indicates an expected call of Verify.
+func (mr *MockSignerMockRecorder) Verify(data, signature any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verify", reflect.TypeOf((*MockSigner)(nil).Verify), data, signature)
 }
