@@ -6,12 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/entities"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/pkg/retry"
+	"github.com/sodiqit/metricpulse.git/pkg/signer"
 )
 
 type IMetricReporter interface {
@@ -22,6 +24,7 @@ type MetricReporter struct {
 	client     *resty.Client
 	logger     logger.ILogger
 	serverAddr string
+	signer     signer.Signer
 }
 
 func (r *MetricReporter) SendMetrics(ctx context.Context, metrics map[string]interface{}, backoff retry.Backoff) {
@@ -57,15 +60,16 @@ func (r *MetricReporter) SendMetrics(ctx context.Context, metrics map[string]int
 
 	// Отправка сжатого списка метрик
 	url := fmt.Sprintf("http://%s/updates/", r.serverAddr)
+	req := r.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip")
+
+	signedReq := signRequest(buf.Bytes(), req, r.signer)
 
 	resp, err := retry.DoWithData(ctx, backoff, func(ctx context.Context) (*resty.Response, error) {
 		r.logger.Infow("try send metric on server")
 
-		resp, err := r.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("Content-Encoding", "gzip").
-			SetBody(buf.Bytes()).
-			Post(url)
+		resp, err := signedReq.Post(url)
 
 		if err != nil || resp.StatusCode() >= 500 {
 			return resp, retry.RetryableError(err)
@@ -79,14 +83,20 @@ func (r *MetricReporter) SendMetrics(ctx context.Context, metrics map[string]int
 		return
 	}
 
+	if resp.StatusCode() >= http.StatusBadRequest {
+		r.logger.Errorw("error while sending metrics batch", "error", resp.String())
+		return
+	}
+
 	r.logger.Infow("success sending metrics batch", "result", resp.String())
 }
 
-func NewMetricReporter(serverAddr string, client *resty.Client, logger logger.ILogger) *MetricReporter {
+func NewMetricReporter(serverAddr string, client *resty.Client, logger logger.ILogger, signer signer.Signer) *MetricReporter {
 	return &MetricReporter{
 		client:     client,
 		serverAddr: serverAddr,
 		logger:     logger,
+		signer:     signer,
 	}
 }
 
@@ -112,4 +122,14 @@ func wrapBodyInGzip(body interface{}) (*bytes.Buffer, error) {
 	}
 
 	return buf, nil
+}
+
+func signRequest(body []byte, r *resty.Request, signer signer.Signer) *resty.Request {
+	if signer == nil {
+		return r.SetBody(body)
+	}
+
+	signature := signer.Sign(body)
+
+	return r.SetHeader(constants.HashHeader, signature).SetBody(body)
 }
