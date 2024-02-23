@@ -9,6 +9,23 @@ import (
 	"github.com/sodiqit/metricpulse.git/pkg/signer"
 )
 
+type hashResponseWriter struct {
+	http.ResponseWriter
+	signer signer.Signer
+}
+
+func (r *hashResponseWriter) Write(b []byte) (int, error) {
+	r.ResponseWriter.Header().Add(constants.HashHeader, r.signer.Sign(b))
+
+	size, err := r.ResponseWriter.Write(b)
+
+	if err != nil {
+		return size, err
+	}
+
+	return size, err
+}
+
 func WithSignValidator(signer signer.Signer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +49,9 @@ func WithSignValidator(signer signer.Signer) func(http.Handler) http.Handler {
 				return
 			}
 
-			next.ServeHTTP(w, r)
+			hw := &hashResponseWriter{ResponseWriter: w, signer: signer}
+
+			next.ServeHTTP(hw, r)
 		})
 	}
 }

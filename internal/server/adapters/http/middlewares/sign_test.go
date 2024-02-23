@@ -1,6 +1,7 @@
 package middlewares_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -116,7 +117,7 @@ func TestSignValidatorMiddleware(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ts, sha256Signer := setupSuite(tc.config)
 
-			signature := tc.createSignature(sha256Signer)
+			sig := tc.createSignature(sha256Signer)
 
 			defer ts.Close()
 
@@ -129,7 +130,7 @@ func TestSignValidatorMiddleware(t *testing.T) {
 			}
 
 			if tc.needAssignHeader {
-				req.Header.Add(constants.HashHeader, signature)
+				req.Header.Add(constants.HashHeader, sig)
 			}
 
 			resp, err := req.Send()
@@ -138,7 +139,11 @@ func TestSignValidatorMiddleware(t *testing.T) {
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
 
 			if tc.expectedStatus == http.StatusOK {
+				fmt.Println("resulted headers", resp.Header())
+				signature := resp.Header().Get(constants.HashHeader)
 				assert.Equal(t, tc.expectedResult, resp.String())
+				assert.Equal(t, sig, signature)
+
 			}
 		})
 	}

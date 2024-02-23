@@ -60,16 +60,15 @@ func (r *MetricReporter) SendMetrics(ctx context.Context, metrics map[string]int
 
 	// Отправка сжатого списка метрик
 	url := fmt.Sprintf("http://%s/updates/", r.serverAddr)
-	req := r.client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Content-Encoding", "gzip")
-
-	signedReq := signRequest(buf.Bytes(), req, r.signer)
 
 	resp, err := retry.DoWithData(ctx, backoff, func(ctx context.Context) (*resty.Response, error) {
 		r.logger.Infow("try send metric on server")
 
-		resp, err := signedReq.Post(url)
+		req := r.client.R().
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Content-Encoding", "gzip")
+
+		resp, err := signRequest(buf.Bytes(), req, r.signer).Post(url)
 
 		if err != nil || resp.StatusCode() >= 500 {
 			return resp, retry.RetryableError(err)
