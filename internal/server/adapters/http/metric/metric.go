@@ -16,18 +16,25 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/middlewares"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
+	"github.com/sodiqit/metricpulse.git/pkg/signer"
 )
 
 type Adapter struct {
 	metricService metricprocessor.MetricService
 	logger        logger.ILogger
 	storage       storage.Storage
+	signer        signer.Signer
 }
 
 func (a *Adapter) Route() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middlewares.WithLogger(a.logger))
+
+	if a.signer != nil {
+		r.Use(middlewares.WithSignValidator(a.signer))
+	}
+
 	r.Use(middlewares.Gzip)
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", a.handleTextUpdateMetric)
@@ -254,11 +261,12 @@ func (a *Adapter) handleGetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(htmlBuilder.String()))
 }
 
-func New(metricService metricprocessor.MetricService, storage storage.Storage, logger logger.ILogger) *Adapter {
+func New(metricService metricprocessor.MetricService, storage storage.Storage, logger logger.ILogger, signer signer.Signer) *Adapter {
 	return &Adapter{
 		metricService,
 		logger,
 		storage,
+		signer,
 	}
 }
 

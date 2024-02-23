@@ -9,5 +9,5 @@ import (
 func main() {
 	parseConfig()
 
-	agent.RunCollector(cfg.Address, time.Duration(cfg.PollInterval)*time.Second, time.Duration(cfg.ReportInterval)*time.Second, cfg.LogLevel)
+	agent.RunCollector(cfg.Address, time.Duration(cfg.PollInterval)*time.Second, time.Duration(cfg.ReportInterval)*time.Second, cfg.LogLevel, cfg.SecretKey)
 }

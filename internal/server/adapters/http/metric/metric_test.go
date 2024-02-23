@@ -15,6 +15,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/adapters/http/metric"
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
+	"github.com/sodiqit/metricpulse.git/pkg/signer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -34,7 +35,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, nil)
 
 	r.Mount("/", c.Route())
 
@@ -149,7 +150,7 @@ func TestGetMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, nil)
 
 	r.Mount("/", c.Route())
 
@@ -268,7 +269,7 @@ func TestTextUpdateMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, nil)
 
 	r.Mount("/", c.Route())
 
@@ -342,7 +343,7 @@ func TestTextGetMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, nil)
 
 	r.Mount("/", c.Route())
 
@@ -439,7 +440,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, nil)
 
 	r.Mount("/", c.Route())
 
@@ -510,7 +511,7 @@ func TestPingHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, nil)
 
 	r.Mount("/", c.Route())
 
@@ -585,7 +586,7 @@ func TestBatchUpdatesMetricHandler(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	c := metric.New(metricServiceMock, storageMock, logger)
+	c := metric.New(metricServiceMock, storageMock, logger, nil)
 
 	r.Mount("/", c.Route())
 
@@ -650,6 +651,87 @@ func TestBatchUpdatesMetricHandler(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
+		})
+	}
+}
+
+func TestSetupSignerInAdapter(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	metricServiceMock := metricprocessor.NewMockMetricService(ctrl)
+	signerMock := signer.NewMockSigner(ctrl)
+	storageMock := storage.NewMockStorage(ctrl)
+	logger, err := logger.Initialize("info")
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	client := resty.New().SetHeader("Content-Type", "application/json")
+
+	body := `[
+				{
+				  "id": "test",
+				  "type": "counter",
+				  "delta": 100
+				},
+				{
+					"id": "test",
+					"type": "gauge",
+					"value": 200.123125
+				}
+			]`
+
+	tests := []struct {
+		name       string
+		setupSuite func() *httptest.Server
+	}{
+		{
+			name: "should validate sign if provide signer",
+			setupSuite: func() *httptest.Server {
+				r := chi.NewRouter()
+				c := metric.New(metricServiceMock, storageMock, logger, signerMock)
+
+				r.Mount("/", c.Route())
+
+				ts := httptest.NewServer(r)
+
+				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				signerMock.EXPECT().Verify(gomock.Any(), "test-signature").Times(1).Return(true)
+				signerMock.EXPECT().Sign(gomock.Any()).MinTimes(1).Return("signature")
+
+				return ts
+			},
+		},
+		{
+			name: "should not validate sign if signer not provided",
+			setupSuite: func() *httptest.Server {
+				r := chi.NewRouter()
+				c := metric.New(metricServiceMock, storageMock, logger, nil)
+
+				r.Mount("/", c.Route())
+
+				ts := httptest.NewServer(r)
+
+				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				signerMock.EXPECT().Verify(gomock.Any(), gomock.Any()).Times(0)
+				signerMock.EXPECT().Sign(gomock.Any()).Times(0)
+
+				return ts
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := tc.setupSuite()
+			defer ts.Close()
+
+			resp, err := client.R().SetBody(body).SetHeader(constants.HashHeader, "test-signature").Post(ts.URL + "/updates/")
+
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusOK, resp.StatusCode())
 		})
 	}
 }

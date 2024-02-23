@@ -10,6 +10,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/pkg/retry"
+	"github.com/sodiqit/metricpulse.git/pkg/signer"
 )
 
 type MetricCounters struct {
@@ -57,7 +58,7 @@ func CollectMetrics(mc *MetricCounters) map[string]interface{} {
 	}
 }
 
-func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval time.Duration, logLevel string) error {
+func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval time.Duration, logLevel string, signerKey string) error {
 	ctx := context.Background()
 	mc := MetricCounters{}
 	logger, err := logger.Initialize(logLevel)
@@ -68,7 +69,13 @@ func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval 
 
 	client := resty.New()
 
-	reporter := reporter.NewMetricReporter(serverAddr, client, logger)
+	var s signer.Signer
+
+	if signerKey != "" {
+		s = signer.NewSHA256Signer(signerKey)
+	}
+
+	reporter := reporter.NewMetricReporter(serverAddr, client, logger, s)
 
 	go func() {
 		for {

@@ -11,6 +11,7 @@ import (
 	"github.com/sodiqit/metricpulse.git/internal/server/services/metricprocessor"
 	"github.com/sodiqit/metricpulse.git/internal/server/storage"
 	"github.com/sodiqit/metricpulse.git/pkg/retry"
+	"github.com/sodiqit/metricpulse.git/pkg/signer"
 )
 
 func RunServer(config *config.Config) error {
@@ -34,7 +35,10 @@ func RunServer(config *config.Config) error {
 	}
 
 	metricService := metricprocessor.New(storage, config)
-	metricAdapter := metric.New(metricService, storage, logger)
+
+	signer := setupSinger(config)
+
+	metricAdapter := metric.New(metricService, storage, logger, signer)
 
 	r := chi.NewRouter()
 	r.Mount("/", metricAdapter.Route())
@@ -55,4 +59,14 @@ func setupStorage(cfg *config.Config, logger logger.ILogger) storage.Storage {
 	}
 
 	return memoryStorage
+}
+
+func setupSinger(cfg *config.Config) signer.Signer {
+	var sha256Signer signer.Signer
+
+	if cfg.SecretKey != "" {
+		sha256Signer = signer.NewSHA256Signer(cfg.SecretKey)
+	}
+
+	return sha256Signer
 }
