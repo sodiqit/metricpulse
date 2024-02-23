@@ -62,7 +62,7 @@ func setupStorage(cfg *config.Config, logger logger.ILogger) storage.Storage {
 }
 
 func setupSinger(cfg *config.Config) signer.Signer {
-	var sha256Signer *signer.Sha256Signer
+	var sha256Signer signer.Signer
 
 	if cfg.SecretKey != "" {
 		sha256Signer = signer.NewSHA256Signer(cfg.SecretKey)
