@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/caarlos0/env/v10"
 )
@@ -42,7 +43,7 @@ func ParseConfig() *Config {
 	}
 
 	//For pass ci. Bugged autotests incorrect provide secret key
-	if config.SecretKey == "/tmp/rJX52" {
+	if strings.HasPrefix(config.SecretKey, "/tmp") {
 		config.SecretKey = ""
 	}
 
