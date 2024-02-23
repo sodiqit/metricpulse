@@ -1,7 +1,6 @@
 package middlewares_test
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -139,7 +138,6 @@ func TestSignValidatorMiddleware(t *testing.T) {
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode())
 
 			if tc.expectedStatus == http.StatusOK {
-				fmt.Println("resulted headers", resp.Header())
 				signature := resp.Header().Get(constants.HashHeader)
 				assert.Equal(t, tc.expectedResult, resp.String())
 				assert.Equal(t, sig, signature)

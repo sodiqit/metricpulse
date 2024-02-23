@@ -699,6 +699,7 @@ func TestSetupSignerInAdapter(t *testing.T) {
 
 				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				signerMock.EXPECT().Verify(gomock.Any(), "test-signature").Times(1).Return(true)
+				signerMock.EXPECT().Sign(gomock.Any()).MinTimes(1).Return("signature")
 
 				return ts
 			},
@@ -715,6 +716,7 @@ func TestSetupSignerInAdapter(t *testing.T) {
 
 				storageMock.EXPECT().SaveMetricBatch(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				signerMock.EXPECT().Verify(gomock.Any(), gomock.Any()).Times(0)
+				signerMock.EXPECT().Sign(gomock.Any()).Times(0)
 
 				return ts
 			},
