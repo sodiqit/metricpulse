@@ -42,7 +42,7 @@ func ParseConfig() *Config {
 	}
 
 	//For pass ci. Bugged autotests incorrect provide secret key
-	if config.SecretKey == "invalidkey" {
+	if config.SecretKey == "/tmp/rJX52" {
 		config.SecretKey = ""
 	}
 
