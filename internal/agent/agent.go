@@ -2,66 +2,39 @@ package agent
 
 import (
 	"context"
-	"math/rand"
-	"runtime"
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
-	"github.com/sodiqit/metricpulse.git/pkg/retry"
 	"github.com/sodiqit/metricpulse.git/pkg/signer"
+	"golang.org/x/sync/errgroup"
 )
 
-type MetricCounters struct {
-	PollCount   int64
-	RandomValue float64
+type Reporter interface {
+	ReportLoop(ctx context.Context) error
 }
 
-func CollectMetrics(mc *MetricCounters) map[string]interface{} {
-	var rtm runtime.MemStats
-	runtime.ReadMemStats(&rtm)
-
-	mc.PollCount++
-	mc.RandomValue = float64(rand.Intn(100))
-
-	return map[string]interface{}{
-		"Alloc":         float64(rtm.Alloc),
-		"BuckHashSys":   float64(rtm.BuckHashSys),
-		"Frees":         float64(rtm.Frees),
-		"GCCPUFraction": float64(rtm.GCCPUFraction),
-		"GCSys":         float64(rtm.GCSys),
-		"HeapAlloc":     float64(rtm.HeapAlloc),
-		"HeapIdle":      float64(rtm.HeapIdle),
-		"HeapInuse":     float64(rtm.HeapInuse),
-		"HeapObjects":   float64(rtm.HeapObjects),
-		"HeapReleased":  float64(rtm.HeapReleased),
-		"HeapSys":       float64(rtm.HeapSys),
-		"LastGC":        float64(rtm.LastGC),
-		"Lookups":       float64(rtm.Lookups),
-		"MCacheInuse":   float64(rtm.MCacheInuse),
-		"MCacheSys":     float64(rtm.MCacheSys),
-		"MSpanInuse":    float64(rtm.MSpanInuse),
-		"MSpanSys":      float64(rtm.MSpanSys),
-		"Mallocs":       float64(rtm.Mallocs),
-		"NextGC":        float64(rtm.NextGC),
-		"NumForcedGC":   float64(rtm.NumForcedGC),
-		"NumGC":         float64(rtm.NumGC),
-		"OtherSys":      float64(rtm.OtherSys),
-		"PauseTotalNs":  float64(rtm.PauseTotalNs),
-		"StackInuse":    float64(rtm.StackInuse),
-		"StackSys":      float64(rtm.StackSys),
-		"Sys":           float64(rtm.Sys),
-		"TotalAlloc":    float64(rtm.TotalAlloc),
-		"PollCount":     mc.PollCount,
-		"RandomValue":   mc.RandomValue,
-	}
+type Collector interface {
+	PollLoop(ctx context.Context) error
 }
 
-func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval time.Duration, logLevel string, signerKey string) error {
-	ctx := context.Background()
-	mc := MetricCounters{}
-	logger, err := logger.Initialize(logLevel)
+type Scope interface {
+	Counter(name string) Counter
+	Gauge(name string) Gauge
+	Snapshot() MetricSnapshot
+}
+
+type Agent struct {
+	config *Config
+}
+
+func (a *Agent) Run() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	logger, err := logger.Initialize(a.config.LogLevel)
 
 	if err != nil {
 		return err
@@ -71,22 +44,44 @@ func RunCollector(serverAddr string, pollInterval time.Duration, reportInterval 
 
 	var s signer.Signer
 
-	if signerKey != "" {
-		s = signer.NewSHA256Signer(signerKey)
+	if a.config.SecretKey != "" {
+		s = signer.NewSHA256Signer(a.config.SecretKey)
 	}
 
-	reporter := reporter.NewMetricReporter(serverAddr, client, logger, s)
+	scope := NewRootScope()
 
-	go func() {
-		for {
-			CollectMetrics(&mc)
-			time.Sleep(pollInterval)
-		}
-	}()
+	reporterOptions := MetricReporterOptions{
+		ServerAddr:     a.config.Address,
+		Logger:         logger,
+		Scope:          scope,
+		Client:         client,
+		Signer:         s,
+		ReportInterval: time.Duration(a.config.ReportInterval) * time.Second,
+		RateLimit:      a.config.RateLimit,
+	}
 
-	for {
-		metrics := CollectMetrics(&mc)
-		reporter.SendMetrics(ctx, metrics, retry.NewBaseBackoff())
-		time.Sleep(reportInterval)
+	reporter := NewMetricReporter(reporterOptions)
+
+	memStatsCollector := NewMemStatsCollector(logger, time.Duration(a.config.PollInterval)*time.Second, scope)
+	utilStatsCollector := NewUtilStatsCollector(logger, time.Duration(a.config.PollInterval)*time.Second, scope)
+
+	g.Go(func() error {
+		return memStatsCollector.PollLoop(ctx)
+	})
+
+	g.Go(func() error {
+		return utilStatsCollector.PollLoop(ctx)
+	})
+
+	g.Go(func() error {
+		return reporter.ReportLoop(ctx)
+	})
+
+	return g.Wait()
+}
+
+func NewAgent(config *Config) *Agent {
+	return &Agent{
+		config,
 	}
 }

@@ -1,4 +1,5 @@
 //go:build !race
+
 package storage_test
 
 import (

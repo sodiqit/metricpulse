@@ -1,13 +1,18 @@
 package main
 
 import (
-	"time"
+	"log"
 
 	"github.com/sodiqit/metricpulse.git/internal/agent"
 )
 
 func main() {
-	parseConfig()
+	cfg := agent.ParseConfig()
 
-	agent.RunCollector(cfg.Address, time.Duration(cfg.PollInterval)*time.Second, time.Duration(cfg.ReportInterval)*time.Second, cfg.LogLevel, cfg.SecretKey)
+	a := agent.NewAgent(cfg)
+
+	err := a.Run()
+	if err != nil {
+		log.Fatalf("Error while run agent: %s", err)
+	}
 }

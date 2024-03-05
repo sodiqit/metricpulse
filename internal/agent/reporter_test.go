@@ -1,4 +1,4 @@
-package reporter_test
+package agent_test
 
 import (
 	"compress/gzip"
@@ -12,24 +12,14 @@ import (
 	"github.com/jarcoal/httpmock"
 	"go.uber.org/mock/gomock"
 
-	"github.com/sodiqit/metricpulse.git/internal/agent/reporter"
+	"github.com/sodiqit/metricpulse.git/internal/agent"
 	"github.com/sodiqit/metricpulse.git/internal/constants"
 	"github.com/sodiqit/metricpulse.git/internal/logger"
 	"github.com/sodiqit/metricpulse.git/pkg/retry"
 	"github.com/sodiqit/metricpulse.git/pkg/signer"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type MockHTTPClient struct {
-	mock.Mock
-}
-
-func (m *MockHTTPClient) Post(url, contentType string, body io.Reader) (*http.Response, error) {
-	args := m.Called(url, contentType, body)
-	return args.Get(0).(*http.Response), args.Error(1)
-}
 
 func TestMetricReporter_SendMetrics(t *testing.T) {
 	client := resty.New()
@@ -46,34 +36,16 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 	mockURL := "http://localhost:8080/updates/"
 
 	tests := []struct {
-		name          string
-		metrics       map[string]interface{}
-		signer        signer.Signer
-		expectedCalls int
+		name               string
+		signer             signer.Signer
+		expectResponseBody string
+		expectedCalls      int
 	}{
 		{
-			name: "Valid gauge metric",
-			metrics: map[string]interface{}{
-				"testGauge": float64(1.23),
-			},
-			signer:        signerMock,
-			expectedCalls: 1,
-		},
-		{
-			name: "Valid counter metric",
-			metrics: map[string]interface{}{
-				"testCounter": int64(1),
-			},
-			signer:        nil,
-			expectedCalls: 1,
-		},
-		{
-			name: "Unsupported metric type",
-			metrics: map[string]interface{}{
-				"unknown": "unsupported value",
-			},
-			signer:        nil,
-			expectedCalls: 0,
+			name:               "Valid metric snapshot",
+			signer:             signerMock,
+			expectResponseBody: `[{"id":"TestCounter","type":"counter","delta":1},{"id":"TestGauge","type":"gauge","value":1}]`,
+			expectedCalls:      1,
 		},
 	}
 
@@ -98,8 +70,13 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 					t.Errorf("Expected %s header', got '%s'", constants.HashHeader, signature)
 				}
 
-				_, err := gzip.NewReader(req.Body)
+				data, err := gzip.NewReader(req.Body)
 				require.NoError(t, err)
+
+				res, err := io.ReadAll(data)
+				require.NoError(t, err)
+
+				require.JSONEq(t, tt.expectResponseBody, string(res))
 				return httpmock.NewStringResponse(200, "OK"), nil
 			})
 
@@ -108,9 +85,29 @@ func TestMetricReporter_SendMetrics(t *testing.T) {
 				t.Fatalf("Error initializing logger: %s", err)
 			}
 
-			r := reporter.NewMetricReporter("localhost:8080", client, logger, tt.signer)
+			scope := agent.NewRootScope()
 
-			r.SendMetrics(context.Background(), tt.metrics, retry.EmptyBackoff)
+			testGauge := scope.Gauge("TestGauge")
+			testGauge.Update(1)
+
+			testCounter := scope.Counter("TestCounter")
+			testCounter.Inc(1)
+
+			snapshot := scope.Snapshot()
+
+			options := agent.MetricReporterOptions{
+				ServerAddr:     "localhost:8080",
+				Scope:          scope,
+				Client:         client,
+				ReportInterval: 0,
+				RateLimit:      2,
+				Logger:         logger,
+				Signer:         tt.signer,
+			}
+
+			r := agent.NewMetricReporter(options)
+
+			r.SendBatchMetrics(context.Background(), snapshot, retry.EmptyBackoff)
 
 			assert.Equal(t, tt.expectedCalls, httpmock.GetTotalCallCount(), "Unexpected number of calls")
 		})
